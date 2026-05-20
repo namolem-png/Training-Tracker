@@ -1,0 +1,2446 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Дневник тренировок</title>
+    
+    <!-- Базовые PWA теги для iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#2c3e50">
+
+    <style>
+:root {
+    --bg-color: #f4f7f6;
+    --card-bg: #ffffff;
+    --text-main: #333333;
+    --text-muted: #777777;
+    --primary: #4CAF50;
+    --primary-hover: #45a049;
+    --secondary: #3498db;
+    --danger: #e74c3c;
+    --export-color: #7f8c8d;
+    --import-color: #f39c12;
+    --border: #e0e0e0;
+    --nav-bg: #2c3e50;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    margin: 0;
+    padding: 0;
+    padding-bottom: 50px;
+    -webkit-tap-highlight-color: transparent; /* Убирает синее выделение при тапе на мобилках */
+}
+
+.navbar {
+    background-color: var(--nav-bg);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    background-image: linear-gradient(to right, rgba(76, 175, 80, 0.4) var(--progress, 0%), transparent var(--progress, 0%));
+    background-repeat: no-repeat;
+    transition: background-image 0.3s ease;
+    /* Отступ сверху для "челки" айфонов, если 앱 открыт в полноэкранном режиме */
+    padding-top: env(safe-area-inset-top, 15px);
+}
+
+.navbar-title-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.page-title {
+    color: white;
+    font-size: 20px;
+    font-weight: bold;
+    margin: 0;
+}
+
+.estimated-time {
+    color: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    background: rgba(0, 0, 0, 0.25);
+    padding: 4px 10px;
+    border-radius: 12px;
+    display: none;
+}
+
+.hamburger-btn {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+}
+
+.side-menu {
+    position: fixed;
+    top: 0;
+    right: -250px;
+    width: 250px;
+    height: 100%;
+    background-color: var(--nav-bg);
+    z-index: 1001;
+    transition: right 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    padding-top: calc(60px + env(safe-area-inset-top, 0px));
+    box-shadow: -2px 0 5px rgba(0,0,0,0.2);
+}
+
+.side-menu.open {
+    right: 0;
+}
+
+.menu-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s;
+}
+
+.menu-overlay.open {
+    opacity: 1;
+    visibility: visible;
+}
+
+.nav-btn {
+    width: 100%;
+    padding: 15px 20px;
+    text-align: left;
+    color: white;
+    background: none;
+    border: none;
+    border-left: 4px solid transparent;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 0.3s, background-color 0.3s;
+}
+
+.nav-btn.active {
+    opacity: 1;
+    border-left-color: var(--primary);
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 15px;
+    width: 100%;
+}
+
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+.header {
+    background-color: var(--card-bg);
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.header-inputs {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.header input {
+    font-size: 16px;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    text-align: center;
+    min-width: 0;
+    flex: 1;
+}
+
+.header-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.nav-arrow {
+    background: none;
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    color: var(--primary);
+    padding: 5px 15px;
+    border-radius: 5px;
+    transition: background-color 0.2s;
+}
+
+.nav-arrow:hover:not(:disabled) {
+    background-color: #f0f0f0;
+}
+
+.nav-arrow:disabled {
+    color: var(--text-muted);
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.category-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 20px 0 10px 0;
+    border-bottom: 2px solid var(--primary);
+    cursor: pointer;
+    user-select: none;
+}
+
+.category-title-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-grow: 1;
+}
+
+.category-arrow {
+    font-size: 12px;
+    transition: transform 0.3s;
+    color: var(--text-muted);
+}
+
+.category-header.collapsed .category-arrow {
+    transform: rotate(-90deg);
+}
+
+.category-exercises.collapsed {
+    display: none;
+}
+
+.category-title {
+    font-size: 20px;
+    margin: 0;
+    color: var(--text-main);
+}
+
+.btn-add-to-cat {
+    background: none;
+    border: none;
+    color: var(--primary);
+    font-size: 28px;
+    cursor: pointer;
+    padding: 0 5px;
+    line-height: 0.8;
+    font-weight: bold;
+}
+
+.btn-add-to-cat:hover {
+    color: var(--primary-hover);
+}
+
+.exercise-card {
+    background-color: var(--card-bg);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    transition: opacity 0.3s;
+    width: 100%;
+}
+
+.exercise-card.completed { opacity: 0.6; }
+.exercise-card.completed .ex-name {
+    text-decoration: line-through;
+    color: var(--text-muted);
+}
+
+.ex-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+}
+
+.ex-header-left {
+    display: flex;
+    gap: 10px;
+    flex-grow: 1;
+}
+
+.ex-header input[type="checkbox"] {
+    margin-top: 5px;
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    cursor: pointer;
+}
+
+.ex-info { flex-grow: 1; min-width: 0; }
+.ex-name { font-size: 16px; font-weight: bold; margin: 0 0 5px 0; word-wrap: break-word; padding-right: 10px;}
+.ex-target { font-size: 13px; color: var(--text-muted); margin: 0; }
+
+.btn-delete-ex {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 18px;
+    padding: 0;
+    color: var(--danger);
+    opacity: 0.7;
+}
+.btn-delete-ex:hover { opacity: 1; }
+
+.sets-container {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+}
+
+.set-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #f9f9f9;
+    padding: 8px 10px;
+    border-radius: 5px;
+    margin-bottom: 5px;
+    font-size: 14px;
+}
+
+.set-actions { display: flex; gap: 5px; }
+.set-actions button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 5px;
+}
+.btn-edit { color: var(--secondary); }
+.btn-delete { color: var(--danger); }
+
+.add-set-form {
+    display: flex;
+    gap: 5px;
+    margin-top: 10px;
+    width: 100%;
+}
+
+.add-set-form input {
+    flex: 1;
+    min-width: 0;
+    padding: 8px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-size: 14px;
+}
+
+.add-set-form button {
+    background-color: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    padding: 0 15px;
+    cursor: pointer;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.action-btn {
+    display: block;
+    width: 100%;
+    padding: 15px;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 15px;
+    text-align: center;
+}
+
+.btn-add-ex { background-color: var(--secondary);}
+.btn-new-workout { background-color: var(--primary); margin-top: 20px; }
+.btn-export { background-color: var(--export-color); margin-top: 40px; }
+.btn-import { background-color: var(--import-color); }
+
+.add-ex-container {
+    display: none;
+    background-color: var(--card-bg);
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    border: 2px solid var(--secondary);
+}
+
+.add-ex-container input, .add-ex-container select {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-size: 14px;
+}
+.add-ex-container select { background-color: white; }
+
+.history-card {
+    background-color: var(--card-bg);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    border-left: 5px solid var(--primary);
+}
+.history-card:hover { background-color: #f0fdf4; }
+.history-date { font-weight: bold; font-size: 16px; margin: 0 0 5px 0;}
+.history-stats { font-size: 13px; color: var(--text-muted); margin: 0;}
+.empty-state { text-align: center; color: var(--text-muted); margin-top: 50px; }
+
+.category-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #fff;
+    padding: 10px 15px;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    border-left: 3px solid var(--primary);
+}
+
+.calendar-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    background: var(--card-bg);
+    padding: 10px;
+    border-radius: 10px;
+}
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+    background-color: var(--card-bg);
+    padding: 10px;
+    border-radius: 10px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+.calendar-header-day {
+    text-align: center;
+    font-weight: bold;
+    font-size: 12px;
+    padding: 5px 0;
+    color: var(--text-muted);
+}
+.calendar-day {
+    aspect-ratio: 1 / 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-size: 14px;
+    cursor: pointer;
+    position: relative;
+    transition: background-color 0.2s;
+}
+.calendar-day:hover { background-color: #f0f0f0; }
+.calendar-day.empty { border: none; cursor: default; }
+.calendar-day.empty:hover { background-color: transparent; }
+.calendar-day.weekend { color: #e67e22; background-color: #fffaf0; }
+.calendar-day.has-workout {
+    background-color: #e8f5e9;
+    border-color: var(--primary);
+    font-weight: bold;
+}
+.workout-dot {
+    width: 6px;
+    height: 6px;
+    background-color: var(--primary);
+    border-radius: 50%;
+    margin-top: 2px;
+}
+
+.collapsible-header {
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #e9ecef;
+    padding: 10px 15px;
+    border-radius: 8px;
+    margin-top: 20px !important;
+    margin-bottom: 10px;
+    user-select: none;
+    transition: background-color 0.2s, border-radius 0.2s;
+    border: 1px solid transparent;
+}
+.collapsible-header.open {
+    border-radius: 8px 8px 0 0;
+    margin-bottom: 0;
+    background-color: #fff;
+    border-color: var(--border);
+    border-bottom: none;
+    color: var(--primary);
+    font-weight: bold;
+}
+.collapsible-header:hover { background-color: #dee2e6; }
+.collapsible-header::after {
+    content: '▼';
+    font-size: 12px;
+    color: var(--text-muted);
+    transition: transform 0.3s;
+}
+.collapsible-header.open::after { transform: rotate(-180deg); }
+.collapsible-body {
+    display: none;
+    overflow: hidden;
+}
+.collapsible-body.open {
+    display: block;
+    padding: 15px;
+    background-color: #fff;
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    margin-bottom: 25px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.stats-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.chart-type-selector {
+    display: flex;
+    gap: 5px;
+}
+
+.chart-type-selector button {
+    flex: 1;
+    padding: 8px;
+    font-size: 12px;
+    background: #e9ecef;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.chart-type-selector button.active {
+    background-color: var(--secondary);
+    color: white;
+    border-color: var(--secondary);
+    font-weight: bold;
+}
+</style>
+</head>
+<body>
+
+<div class="navbar" id="main-navbar">
+    <div class="navbar-title-wrapper">
+        <h1 class="page-title" id="page-title">Тренировка</h1>
+        <div id="estimated-time-container" class="estimated-time">⏱️ 00:00</div>
+    </div>
+    <button class="hamburger-btn" id="btn-hamburger">☰</button>
+</div>
+
+<div class="menu-overlay" id="menu-overlay"></div>
+<div class="side-menu" id="side-menu">
+    <button class="nav-btn active" data-tab="workout">Тренировка</button>
+    <button class="nav-btn" data-tab="history">История</button>
+    <button class="nav-btn" data-tab="statistics">Статистика</button>
+    <button class="nav-btn" data-tab="settings">Настройки</button>
+</div>
+
+<div class="container">
+    <!-- Вкладка ТРЕНИРОВКА -->
+    <div id="tab-workout" class="tab-content active">
+        <div class="header">
+            <div class="header-nav">
+                <button id="btn-prev-workout" class="nav-arrow" title="Предыдущая тренировка">◀</button>
+                <h2 style="margin: 0;" id="workout-plan-title">План</h2>
+                <button id="btn-next-workout" class="nav-arrow" title="Следующая тренировка">▶</button>
+            </div>
+            <div class="header-inputs">
+                <input type="text" id="dayOfWeek" placeholder="День недели">
+                <input type="date" id="dateInput">
+            </div>
+        </div>
+
+        <div id="workout-list"></div>
+
+        <div id="add-ex-form-container" class="add-ex-container">
+            <h3 style="margin-top: 0; margin-bottom: 15px; color: var(--text-main);">Новое упражнение</h3>
+            <div id="library-select-wrapper">
+                <label style="font-size: 12px; color: var(--text-muted);">Выбрать из списка или ввести новое:</label>
+                <select id="exerciseLibrarySelect" style="margin-bottom: 15px;"></select>
+            </div>
+            <input type="text" id="newExName" placeholder="Название (например, Отжимания)">
+            <select id="newExCat"></select>
+            <input type="text" id="newExTarget" placeholder="Цель (например, 3 x 10 повт.)">
+            
+            <div style="display: flex; gap: 10px;">
+                <button id="btn-save-new-ex" style="flex: 1; background-color: var(--primary); color: white; border: none; padding: 12px; border-radius: 5px; font-weight: bold; cursor: pointer;">Добавить</button>
+                <button id="btn-cancel-new-ex" style="flex: 1; background-color: #ccc; color: #333; border: none; padding: 12px; border-radius: 5px; font-weight: bold; cursor: pointer;">Отмена</button>
+            </div>
+        </div>
+
+        <button id="btn-show-add-ex" class="action-btn btn-add-ex">+ Добавить упражнение</button>
+    </div>
+
+    <!-- Вкладка ИСТОРИЯ -->
+    <div id="tab-history" class="tab-content">
+        <div id="new-workout-selector">
+            <button id="btn-show-templates" class="action-btn btn-new-workout">+ Начать новую тренировку</button>
+        </div>
+        
+        <div id="template-selection-container" class="add-ex-container" style="display: none; border-color: var(--primary);">
+            <h3 style="margin-top: 0; margin-bottom: 15px;">Выберите шаблон</h3>
+            <div id="template-options-ui"></div>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button id="btn-confirm-template" style="flex: 1; background-color: var(--primary); color: white; border: none; padding: 12px; border-radius: 5px; font-weight: bold; cursor: pointer;">Начать</button>
+                <button id="btn-cancel-template" style="flex: 1; background-color: #ccc; color: #333; border: none; padding: 12px; border-radius: 5px; font-weight: bold; cursor: pointer;">Отмена</button>
+            </div>
+        </div>
+
+        <div id="calendar-container" style="margin-top: 30px;"></div>
+    </div>
+
+    <!-- Вкладка СТАТИСТИКА -->
+    <div id="tab-statistics" class="tab-content">
+        <div id="statistics-container">
+            <div class="header" style="margin-bottom: 20px;">
+                <h2 style="margin: 0;">Общая статистика</h2>
+            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:10px; margin-bottom:30px;">
+                <div class="header" style="padding:10px; margin:0;">
+                    <div style="font-size:12px; color:var(--text-muted)">Тренировок</div>
+                    <div id="stat-total-workouts" style="font-weight:bold; font-size: 18px;">0</div>
+                </div>
+                <div class="header" style="padding:10px; margin:0;">
+                    <div style="font-size:12px; color:var(--text-muted)">Упражнений</div>
+                    <div id="stat-total-exercises" style="font-weight:bold; font-size: 18px;">0</div>
+                </div>
+                <div class="header" style="padding:10px; margin:0;">
+                    <div style="font-size:12px; color:var(--text-muted)">Подходов</div>
+                    <div id="stat-total-sets" style="font-weight:bold; font-size: 18px;">0</div>
+                </div>
+            </div>
+
+            <div class="header" style="text-align:left;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                    <h3 style="margin:0">Анализ прогресса</h3>
+                    <button id="btn-stats-help" style="background:none; border:none; color:var(--secondary); cursor:pointer; font-size:18px;">ⓘ</button>
+                </div>
+                
+                <div class="stats-controls">
+                    <select id="stats-exercise-select" style="width:100%; padding:10px; border-radius:5px; border:1px solid var(--border);">
+                        <option value="">-- Выберите упражнение --</option>
+                    </select>
+                    
+                    <div class="chart-type-selector">
+                        <button data-metric="max" class="active">Max Вес</button>
+                        <button data-metric="1rm">1RM (Эпли)</button>
+                        <button data-metric="avg">Средний вес</button>
+                    </div>
+                </div>
+
+                <div style="background:#fff; border-radius:5px; overflow:hidden; position:relative; margin-top: 15px; border: 1px solid var(--border);">
+                    <canvas id="stats-chart" width="500" height="300" style="width:100%; height:auto; display: block;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Вкладка НАСТРОЙКИ -->
+    <div id="tab-settings" class="tab-content">
+        <div id="settings-accordion">
+            <h3 class="collapsible-header" data-section="templates">Шаблоны тренировок</h3>
+            <div class="collapsible-body">
+                <div id="templates-list" style="margin-bottom: 20px;"></div>
+                <button id="btn-open-template-editor" class="action-btn" style="background-color: var(--secondary);">+ Создать шаблон</button>
+
+                <div id="template-editor" class="add-ex-container" style="display: none; border-color: var(--primary);">
+                    <h3 id="template-editor-title">Создание шаблона</h3>
+                    <input type="hidden" id="edit-template-id">
+                    <input type="text" id="template-name" placeholder="Название шаблона (например, День ног)">
+                    
+                    <div id="template-exercises-list" style="margin-bottom: 15px;"></div>
+                    
+                    <div id="template-step-container" style="background: #f9f9f9; padding: 10px; border-radius: 5px; margin-bottom: 15px; display: none; border: 1px dashed #ccc;">
+                        <p id="step-instruction" style="font-size: 14px; font-weight: bold; margin-top: 0;"></p>
+                        <div id="step-options" style="display: flex; flex-wrap: wrap; gap: 5px;"></div>
+                        <button id="btn-cancel-template-step" style="margin-top: 10px; font-size: 12px; background: none; border: none; color: var(--danger); cursor: pointer; text-decoration: underline;">Отмена</button>
+                    </div>
+
+                    <button id="btn-add-ex-to-template" style="width: 100%; padding: 8px; margin-bottom: 15px; border: 1px dashed var(--secondary); background: none; color: var(--secondary); cursor: pointer; border-radius: 5px;">+ Добавить упражнение в шаблон</button>
+
+                    <div style="display: flex; gap: 10px;">
+                        <button id="btn-save-template" style="flex: 1; background-color: var(--primary); color: white; border: none; padding: 12px; border-radius: 5px; font-weight: bold; cursor: pointer;">Сохранить шаблон</button>
+                        <button id="btn-close-template-editor" style="flex: 1; background-color: #ccc; color: #333; border: none; padding: 12px; border-radius: 5px; font-weight: bold; cursor: pointer;">Закрыть</button>
+                    </div>
+                </div>
+            </div>
+
+            <h3 class="collapsible-header" data-section="library">Библиотека упражнений</h3>
+            <div class="collapsible-body">
+                <div id="library-list" style="margin-bottom: 20px;"></div>
+                <button id="btn-show-add-lib-ex" class="action-btn btn-add-ex">+ Добавить упражнение в библиотеку</button>
+            </div>
+
+            <h3 class="collapsible-header" data-section="categories">Категории</h3>
+            <div class="collapsible-body">
+                <div id="category-list"></div>
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <input type="text" id="newCategoryName" placeholder="Новая категория" style="flex:1; padding: 10px; border: 1px solid var(--border); border-radius: 5px;">
+                    <button id="btn-add-category" style="background-color: var(--primary); color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; font-weight: bold;">+</button>
+                </div>
+            </div>
+        </div>
+
+        <button id="btn-export-data" class="action-btn btn-export">💾 Экспорт данных (JSON)</button>
+        <input type="file" id="fileInput" accept=".json" style="display: none;">
+        <button id="btn-import-data" class="action-btn btn-import">📂 Импорт данных (JSON)</button>
+    </div>
+</div>
+<script>
+
+/* --- File: js/db.js --- */
+const STORE = {
+    WORKOUTS: 'workouts',
+    EXERCISES: 'exercises',
+    CATEGORIES: 'categories',
+    TEMPLATES: 'templates',
+    SETTINGS: 'settings'
+};
+
+class GymDatabase {
+    constructor() {
+        this.dbName = 'GymAppDB';
+        this.dbVersion = 2; // Версия повышена для создания индекса
+        this.db = null;
+    }
+
+    init() {
+        return new Promise((resolve, reject) => {
+            const request = indexedDB.open(this.dbName, this.dbVersion);
+
+            request.onupgradeneeded = (event) => {
+                const db = event.target.result;
+                const tx = event.target.transaction;
+                
+                let workoutStore;
+                if (!db.objectStoreNames.contains(STORE.WORKOUTS)) {
+                    workoutStore = db.createObjectStore(STORE.WORKOUTS, { keyPath: 'id' });
+                } else {
+                    workoutStore = tx.objectStore(STORE.WORKOUTS);
+                }
+                
+                // Создаем индекс для выборки по дате
+                if (!workoutStore.indexNames.contains('date')) {
+                    workoutStore.createIndex('date', 'date', { unique: false });
+                }
+
+                if (!db.objectStoreNames.contains(STORE.EXERCISES)) db.createObjectStore(STORE.EXERCISES, { keyPath: 'id' });
+                if (!db.objectStoreNames.contains(STORE.CATEGORIES)) db.createObjectStore(STORE.CATEGORIES, { keyPath: 'id' });
+                if (!db.objectStoreNames.contains(STORE.TEMPLATES)) db.createObjectStore(STORE.TEMPLATES, { keyPath: 'id' });
+                if (!db.objectStoreNames.contains(STORE.SETTINGS)) db.createObjectStore(STORE.SETTINGS, { keyPath: 'id' });
+            };
+
+            request.onsuccess = async (event) => {
+                this.db = event.target.result;
+                await this.handleMigration();
+                resolve();
+            };
+
+            request.onerror = () => reject('Ошибка инициализации IndexedDB');
+        });
+    }
+
+    async handleMigration() {
+        const oldDataRaw = localStorage.getItem('gymAppV2');
+        const migrated = localStorage.getItem('migratedToIDB');
+
+        if (oldDataRaw && !migrated) {
+            try {
+                const data = JSON.parse(oldDataRaw);
+                if (data.workouts) for (const w of data.workouts) await this.save(STORE.WORKOUTS, w);
+                if (data.exercises) for (const e of data.exercises) await this.save(STORE.EXERCISES, e);
+                if (data.categories) for (const c of data.categories) await this.save(STORE.CATEGORIES, c);
+                if (data.templates) for (const t of data.templates) await this.save(STORE.TEMPLATES, t);
+                if (data.activeWorkoutId) await this.save(STORE.SETTINGS, { id: 'activeWorkoutId', value: data.activeWorkoutId });
+                
+                localStorage.setItem('migratedToIDB', 'true');
+            } catch (e) {
+                console.error('Ошибка миграции:', e);
+            }
+        }
+    }
+
+    get(storeName, id) {
+        return new Promise((resolve) => {
+            const transaction = this.db.transaction(storeName, 'readonly');
+            const request = transaction.objectStore(storeName).get(id);
+            request.onsuccess = () => resolve(request.result);
+        });
+    }
+
+    getAll(storeName) {
+        return new Promise((resolve) => {
+            const transaction = this.db.transaction(storeName, 'readonly');
+            const request = transaction.objectStore(storeName).getAll();
+            request.onsuccess = () => resolve(request.result || []);
+        });
+    }
+
+    getByPage(storeName, indexName, limit, offset, direction = 'prev') {
+        return new Promise((resolve, reject) => {
+            const transaction = this.db.transaction(storeName, 'readonly');
+            const store = transaction.objectStore(storeName);
+            
+            let request;
+            if (indexName && store.indexNames.contains(indexName)) {
+                request = store.index(indexName).openCursor(null, direction);
+            } else {
+                request = store.openCursor(null, direction);
+            }
+
+            const results = [];
+            let advanced = false;
+
+            request.onsuccess = (event) => {
+                const cursor = event.target.result;
+                if (!cursor) {
+                    resolve(results);
+                    return;
+                }
+                if (offset > 0 && !advanced) {
+                    advanced = true;
+                    cursor.advance(offset);
+                    return;
+                }
+                results.push(cursor.value);
+                if (results.length < limit) cursor.continue();
+                else resolve(results);
+            };
+            request.onerror = () => reject(request.error);
+        });
+    }
+
+    save(storeName, data) {
+        return new Promise((resolve, reject) => {
+            const transaction = this.db.transaction(storeName, 'readwrite');
+            const request = transaction.objectStore(storeName).put(data);
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject();
+        });
+    }
+
+    delete(storeName, id) {
+        return new Promise((resolve) => {
+            const transaction = this.db.transaction(storeName, 'readwrite');
+            const request = transaction.objectStore(storeName).delete(id);
+            request.onsuccess = () => resolve();
+        });
+    }
+
+    clear(storeName) {
+        return new Promise((resolve) => {
+            const transaction = this.db.transaction(storeName, 'readwrite');
+            transaction.objectStore(storeName).clear().onsuccess = () => resolve();
+        });
+    }
+}
+
+
+/* --- File: js/model.js --- */
+
+
+class AppModel {
+    constructor(db) {
+        this.db = db;
+        this.workouts = [];
+        this.categories = [];
+        this.exercises = [];
+        this.templates = [];
+        this.activeWorkoutId = null;
+        this.workoutsOffset = 0;
+    }
+
+    async init() {
+        await this.db.init();
+        
+        this.workoutsOffset = 0;
+        const recentWorkouts = await this.getWorkoutsByPage(20, this.workoutsOffset);
+        this.workouts = recentWorkouts.reverse(); 
+        
+        this.exercises = await this.db.getAll(STORE.EXERCISES);
+        this.categories = await this.db.getAll(STORE.CATEGORIES);
+        this.templates = await this.db.getAll(STORE.TEMPLATES);
+        
+        const activeSetting = await this.db.get(STORE.SETTINGS, 'activeWorkoutId');
+        this.activeWorkoutId = activeSetting ? String(activeSetting.value) : null;
+
+        this.normalizeData();
+        await this.migrateLegacyExercises();
+    }
+
+    normalizeData() {
+        this.workouts.forEach(w => {
+            if (w.exercises && !Array.isArray(w.exercises) && typeof w.exercises === 'object') {
+                const flat = [];
+                for (const cat in w.exercises) flat.push(...w.exercises[cat]);
+                w.exercises = flat;
+            }
+            w.exercises = this.reorderExercisesByCategory(w.exercises);
+        });
+    }
+
+    async migrateLegacyExercises() {
+        if (!this.exercises) this.exercises = [];
+        const getCatId = (name) => {
+            const found = this.categories.find(c => c.name === name);
+            return found ? found.id : 'c7'; 
+        };
+
+        for (const ex of [...this.exercises]) {
+            if (ex.cat) {
+                ex.categoryId = getCatId(ex.cat);
+                delete ex.cat;
+                await this.db.save(STORE.EXERCISES, ex);
+            }
+        }
+
+        for (const w of [...this.workouts]) {
+            let changed = false;
+            for (const ex of [...w.exercises]) {
+                if (!ex.exerciseId) {
+                    let libEntry = this.exercises.find(l => l.name === ex.name && (ex.categoryId === l.categoryId || getCatId(ex.cat) === l.categoryId));
+                    if (!libEntry) {
+                        libEntry = { 
+                            id: 'lib_' + Date.now() + Math.random().toString(36).substring(2, 9),
+                            name: ex.name, categoryId: getCatId(ex.cat), target: ex.target 
+                        };
+                        this.exercises.push(libEntry);
+                        await this.db.save(STORE.EXERCISES, libEntry);
+                    }
+                    ex.exerciseId = libEntry.id;
+                    delete ex.name; delete ex.cat; delete ex.target; delete ex.categoryId;
+                    changed = true;
+                }
+            }
+            if (changed) await this.db.save(STORE.WORKOUTS, w);
+        }
+    }
+
+    async getWorkoutsByPage(limit, offset) {
+        return await this.db.getByPage(STORE.WORKOUTS, 'date', limit, offset, 'prev');
+    }
+
+    async saveActiveWorkoutId(id) {
+        this.activeWorkoutId = id;
+        await this.db.save(STORE.SETTINGS, { id: 'activeWorkoutId', value: id });
+    }
+
+    getActiveWorkout() {
+        return this.workouts.find(w => w.id === String(this.activeWorkoutId)) || null;
+    }
+    
+    getCategoryName(id) {
+        const cat = this.categories.find(c => c.id === id);
+        return cat ? cat.name : 'Без категории';
+    }
+
+    getLibraryExercise(id) {
+        return this.exercises.find(e => e.id === id) || { name: 'Удалено', categoryId: 'c5', target: '-' };
+    }
+
+    reorderExercisesByCategory(exercises) {
+        if (!Array.isArray(exercises)) return exercises;
+        const grouped = {};
+        const catOrder = this.categories.map(c => c.id);
+        exercises.forEach(ex => {
+            const catId = this.getLibraryExercise(ex.exerciseId).categoryId;
+            if (!grouped[catId]) grouped[catId] = [];
+            grouped[catId].push(ex);
+        });
+        return catOrder.filter(id => grouped[id]).flatMap(id => grouped[id]);
+    }
+
+    async addWorkout(templateId = null) {
+        const today = new Date();
+        const days = ['Воскресенье', 'Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота'];
+        let initialExercises = [];
+        
+        if (templateId) {
+            const template = this.templates.find(t => t.id === templateId);
+            if (template) {
+                initialExercises = template.exercises.map(exId => ({
+                    id: 'inst_' + Date.now() + Math.random(),
+                    exerciseId: exId,
+                    completed: false,
+                    sets: []
+                }));
+            }
+        }
+
+        const newWorkout = {
+            id: Date.now().toString(),
+            date: today.toISOString().split('T')[0],
+            dayOfWeek: days[today.getDay()],
+            exercises: this.reorderExercisesByCategory(initialExercises),
+            templateId: templateId
+        };
+
+        this.workouts.push(newWorkout);
+        await this.saveActiveWorkoutId(newWorkout.id);
+        await this.db.save(STORE.WORKOUTS, newWorkout);
+    }
+
+    async updateWorkoutHeader(date, dayOfWeek) {
+        const workout = this.getActiveWorkout();
+        if (workout) {
+            workout.date = date;
+            workout.dayOfWeek = dayOfWeek;
+            await this.db.save(STORE.WORKOUTS, workout);
+        }
+    }
+
+    async deleteWorkout(id) {
+        const wasActive = this.activeWorkoutId === id;
+        this.workouts = this.workouts.filter(w => w.id !== id);
+        await this.db.delete(STORE.WORKOUTS, id);
+        if (wasActive) {
+            await this.saveActiveWorkoutId(this.workouts.length > 0 ? this.workouts[this.workouts.length - 1].id : null);
+        }
+    }
+
+    async toggleComplete(exIndex) {
+        const workout = this.getActiveWorkout();
+        workout.exercises[exIndex].completed = !workout.exercises[exIndex].completed;
+        await this.db.save(STORE.WORKOUTS, workout);
+    }
+
+    async addSet(exIndex, weight, reps) {
+        const workout = this.getActiveWorkout();
+        workout.exercises[exIndex].sets.push({ weight, reps });
+        await this.db.save(STORE.WORKOUTS, workout);
+    }
+
+    async editSet(exIndex, setIndex, weight, reps) {
+        const workout = this.getActiveWorkout();
+        workout.exercises[exIndex].sets[setIndex] = { weight, reps };
+        await this.db.save(STORE.WORKOUTS, workout);
+    }
+
+    async deleteSet(exIndex, setIndex) {
+        const workout = this.getActiveWorkout();
+        workout.exercises[exIndex].sets.splice(setIndex, 1);
+        await this.db.save(STORE.WORKOUTS, workout);
+    }
+
+    async deleteExerciseFromWorkout(exIndex) {
+        const workout = this.getActiveWorkout();
+        workout.exercises.splice(exIndex, 1);
+        await this.db.save(STORE.WORKOUTS, workout);
+    }
+
+    async addExerciseToWorkout(exerciseId) {
+        const workout = this.getActiveWorkout();
+        workout.exercises.push({
+            id: 'inst_' + Date.now(),
+            exerciseId: exerciseId,
+            completed: false,
+            sets: []
+        });
+        workout.exercises = this.reorderExercisesByCategory(workout.exercises);
+        await this.db.save(STORE.WORKOUTS, workout);
+    }
+
+    async addLibraryExercise(name, catId, target) {
+        let existing = this.exercises.find(e => e.name.toLowerCase() === name.toLowerCase() && e.categoryId === catId);
+        if (existing) return existing.id;
+
+        const exerciseId = 'lib_' + Date.now() + Math.random();
+        const newLibEx = { id: exerciseId, name, categoryId: catId, target };
+        this.exercises.push(newLibEx);
+        await this.db.save(STORE.EXERCISES, newLibEx);
+        return exerciseId;
+    }
+
+    async editLibraryExercise(id, name, catId, target) {
+        const ex = this.exercises.find(e => e.id === id);
+        if (ex) {
+            ex.name = name; ex.categoryId = catId; ex.target = target;
+            await this.db.save(STORE.EXERCISES, ex);
+        }
+    }
+
+    async deleteLibraryExercise(id) {
+        this.exercises = this.exercises.filter(e => e.id !== id);
+        await this.db.delete(STORE.EXERCISES, id);
+    }
+
+    async addCategory(name) {
+        if (!this.categories.find(c => c.name === name)) {
+            const newCat = { id: 'c_' + Date.now(), name };
+            this.categories.push(newCat);
+            await this.db.save(STORE.CATEGORIES, newCat);
+            return true;
+        }
+        return false;
+    }
+
+    async deleteCategory(id) {
+        this.categories = this.categories.filter(c => c.id !== id);
+        await this.db.delete(STORE.CATEGORIES, id);
+    }
+
+    async saveTemplate(id, name, exercises) {
+        const templateData = { id: id || 'tpl_' + Date.now(), name, exercises };
+        if (id) {
+            const idx = this.templates.findIndex(t => t.id === id);
+            if (idx > -1) this.templates[idx] = templateData;
+        } else {
+            this.templates.push(templateData);
+        }
+        await this.db.save(STORE.TEMPLATES, templateData);
+    }
+
+    async deleteTemplate(id) {
+        this.templates = this.templates.filter(t => t.id !== id);
+        await this.db.delete(STORE.TEMPLATES, id);
+    }
+
+    getExportData() {
+        return {
+            workouts: this.workouts,
+            exercises: this.exercises,
+            categories: this.categories,
+            templates: this.templates,
+            activeWorkoutId: this.activeWorkoutId
+        };
+    }
+
+    async importData(importedData) {
+        const stores = [STORE.WORKOUTS, STORE.EXERCISES, STORE.CATEGORIES, STORE.TEMPLATES, STORE.SETTINGS];
+        for (const store of stores) await this.db.clear(store);
+
+        if (importedData.workouts) for (const w of importedData.workouts) await this.db.save(STORE.WORKOUTS, w);
+        if (importedData.exercises) for (const e of importedData.exercises) await this.db.save(STORE.EXERCISES, e);
+        if (importedData.categories) for (const c of importedData.categories) await this.db.save(STORE.CATEGORIES, c);
+        if (importedData.templates) for (const t of importedData.templates) await this.db.save(STORE.TEMPLATES, t);
+        if (importedData.activeWorkoutId) await this.db.save(STORE.SETTINGS, { id: 'activeWorkoutId', value: importedData.activeWorkoutId });
+    }
+
+    /**
+     * Получает данные прогресса для конкретного упражнения
+     * @param {string} exerciseId - ID из библиотеки
+     * @param {string} metric - 'max', '1rm' или 'avg'
+     * @returns {Array<{date: string, value: number}>}
+     */
+    getExerciseProgressData(exerciseId, metric) {
+        const results = [];
+
+        // Сортируем тренировки по дате
+        const sortedWorkouts = [...this.workouts].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        sortedWorkouts.forEach(workout => {
+            const instance = workout.exercises.find(ex => ex.exerciseId === exerciseId);
+            if (!instance || !instance.sets || instance.sets.length === 0) return;
+
+            const sets = instance.sets.map(s => ({
+                weight: parseFloat(s.weight) || 0,
+                reps: parseInt(s.reps) || 0
+            })).filter(s => s.reps > 0);
+
+            if (sets.length === 0) return;
+
+            let dayValue = 0;
+            if (metric === 'max') {
+                dayValue = Math.max(...sets.map(s => s.weight));
+            } else if (metric === '1rm') {
+                // Формула Эпли для каждого подхода, берем лучший за день
+                const calculated1RMs = sets.map(s => s.weight * (1 + s.reps / 30));
+                dayValue = Math.round(Math.max(...calculated1RMs));
+            } else if (metric === 'avg') {
+                const sum = sets.reduce((acc, s) => acc + s.weight, 0);
+                dayValue = parseFloat((sum / sets.length).toFixed(1));
+            }
+
+            results.push({
+                date: workout.date,
+                value: dayValue
+            });
+        });
+
+        return results;
+    }
+
+    /**
+     * Группирует библиотеку упражнений по категориям для выпадающего списка
+     */
+    getGroupedExerciseLibrary() {
+        const grouped = {};
+        
+        // Только те упражнения, которые хотя бы раз встречались в тренировках
+        const usedExerciseIds = new Set();
+        this.workouts.forEach(w => {
+            w.exercises.forEach(e => {
+                if (e.sets && e.sets.some(s => (parseInt(s.reps) || 0) > 0)) {
+                    usedExerciseIds.add(e.exerciseId);
+                }
+            });
+        });
+
+        this.exercises.forEach(ex => {
+            if (!usedExerciseIds.has(ex.id)) return;
+            
+            if (!grouped[ex.categoryId]) {
+                grouped[ex.categoryId] = {
+                    categoryName: this.getCategoryName(ex.categoryId),
+                    exercises: []
+                };
+            }
+            grouped[ex.categoryId].exercises.push(ex);
+        });
+
+        return grouped;
+    }
+}
+
+/* --- File: js/view/workoutView.js --- */
+class WorkoutView {
+    constructor() {
+        this.container = document.getElementById('workout-list');
+        this.titleEl = document.getElementById('workout-plan-title');
+        this.dateInput = document.getElementById('dateInput');
+        this.dayInput = document.getElementById('dayOfWeek');
+        this.btnPrev = document.getElementById('btn-prev-workout');
+        this.btnNext = document.getElementById('btn-next-workout');
+    }
+
+    render(model) {
+
+        const workout = model.getActiveWorkout();
+        
+        if (!workout) {
+            this.container.innerHTML = '<div class="empty-state">Нет активных тренировок. Создайте новую!</div>';
+            this.dateInput.value = '';
+            this.dayInput.value = '';
+            this.titleEl.textContent = "План";
+            return;
+        }
+
+        this.dateInput.value = workout.date;
+        this.dayInput.value = workout.dayOfWeek;
+
+        let workoutTitle = "План";
+        if (workout.templateId) {
+            const template = model.templates.find(t => t.id === workout.templateId);
+            if (template) workoutTitle = template.name;
+        }
+        this.titleEl.textContent = workoutTitle;
+
+        let html = '';
+        const grouped = {};
+        workout.exercises.forEach((ex, index) => {
+            const libEx = model.getLibraryExercise(ex.exerciseId);
+            const catId = libEx.categoryId || 'c7'; 
+            if (!grouped[catId]) grouped[catId] = [];
+            grouped[catId].push({ ex, index, libEx });
+        });
+
+        const renderedCats = new Set();
+
+        model.categories.forEach(cat => {
+            if (grouped[cat.id] && grouped[cat.id].length > 0) {
+                const allCompleted = grouped[cat.id].every(item => item.ex.completed);
+                html += this.createCategoryHtml(cat.id, cat.name, allCompleted);
+                html += `<div class="category-exercises ${allCompleted ? 'collapsed' : ''}" id="cat-content-${cat.id}">`;
+                grouped[cat.id].forEach(item => html += this.createCardHtml(item.ex, item.index, item.libEx));
+                html += `</div>`;
+                renderedCats.add(cat.id);
+            }
+        });
+
+        Object.keys(grouped).forEach(catId => {
+            if (!renderedCats.has(catId)) {
+                const allCompleted = grouped[catId].every(item => item.ex.completed);
+                html += this.createCategoryHtml(catId, model.getCategoryName(catId), allCompleted);
+                html += `<div class="category-exercises ${allCompleted ? 'collapsed' : ''}" id="cat-content-${catId}">`;
+                grouped[catId].forEach(item => html += this.createCardHtml(item.ex, item.index, item.libEx));
+                html += `</div>`;
+            }
+        });
+
+        this.container.innerHTML = html;
+    }
+
+    createCategoryHtml(catId, catName, isCollapsed) {
+        return `
+            <div class="category-header ${isCollapsed ? 'collapsed' : ''}" data-action="toggle-category" data-cat-id="${catId}">
+                <div class="category-title-wrapper">
+                    <span class="category-arrow">▼</span>
+                    <div class="category-title">${catName}</div>
+                </div>
+                <button class="btn-add-to-cat" data-action="show-add-ex" data-cat="${catId}" title="Добавить упражнение">+</button>
+            </div>`;
+    }
+
+    createCardHtml(ex, index, libEx) {
+        let setsHtml = ex.sets.map((set, setIndex) => `
+            <div class="set-item">
+                <span>${setIndex + 1}. <b>${set.weight} кг</b> × <b>${set.reps}</b></span>
+                <div class="set-actions">
+                    <button class="btn-edit" data-action="edit-set" data-ex="${index}" data-set="${setIndex}">✎</button>
+                    <button class="btn-delete" data-action="delete-set" data-ex="${index}" data-set="${setIndex}">✖</button>
+                </div>
+            </div>
+        `).join('');
+
+        return `
+            <div class="exercise-card ${ex.completed ? 'completed' : ''}" data-cat-id="${libEx.categoryId}">
+                <div class="ex-header">
+                    <div class="ex-header-left">
+                        <input type="checkbox" ${ex.completed ? 'checked' : ''} data-action="toggle-complete" data-ex="${index}">
+                        <div class="ex-info">
+                            <p class="ex-name">${libEx.name}</p>
+                            <p class="ex-target">Цель: ${libEx.target}</p>
+                        </div>
+                    </div>
+                    <button class="btn-delete-ex" data-action="delete-ex" data-ex="${index}" title="Удалить">🗑️</button>
+                </div>
+                <div class="sets-container">
+                    ${setsHtml}
+                    <div class="add-set-form">
+                        <input type="number" id="weight-${index}" placeholder="Вес (кг)" step="0.5">
+                        <input type="number" id="reps-${index}" placeholder="Повторы">
+                        <button data-action="add-set" data-ex="${index}">+</button>
+                    </div>
+                </div>
+            </div>`;
+    }
+
+    renderCardSets(model, exIndex, cardElement) {
+        const ex = model.getActiveWorkout().exercises[exIndex];
+        const setsContainer = cardElement.querySelector('.sets-container');
+        if (!setsContainer) return;
+        
+        let setsHtml = ex.sets.map((set, setIndex) => `
+            <div class="set-item">
+                <span>${setIndex + 1}. <b>${set.weight} кг</b> × <b>${set.reps}</b></span>
+                <div class="set-actions">
+                    <button class="btn-edit" data-action="edit-set" data-ex="${exIndex}" data-set="${setIndex}">✎</button>
+                    <button class="btn-delete" data-action="delete-set" data-ex="${exIndex}" data-set="${setIndex}">✖</button>
+                </div>
+            </div>
+        `).join('');
+
+        setsHtml += `
+            <div class="add-set-form">
+                <input type="number" id="weight-${exIndex}" placeholder="Вес (кг)" step="0.5">
+                <input type="number" id="reps-${exIndex}" placeholder="Повторы">
+                <button data-action="add-set" data-ex="${exIndex}">+</button>
+            </div>
+        `;
+        setsContainer.innerHTML = setsHtml;
+    }
+
+    bindEvents(controller) {
+        this.container.addEventListener('click', e => {
+            const actionTarget = e.target.closest('[data-action]');
+            if (!actionTarget) return;
+
+            const action = actionTarget.dataset.action;
+            const exIdx = actionTarget.dataset.ex;
+            const setIdx = actionTarget.dataset.set;
+            const card = actionTarget.closest('.exercise-card');
+
+            switch (action) {
+                    case 'toggle-complete': 
+                        controller.handleToggleComplete(exIdx, card); 
+                        break;
+                case 'delete-ex': controller.handleDeleteExercise(exIdx); break;
+                case 'delete-set': controller.handleDeleteSet(exIdx, setIdx, card); break;
+                case 'edit-set': controller.handleEditSet(exIdx, setIdx, card); break;
+                case 'add-set': 
+                    const w = document.getElementById(`weight-${exIdx}`).value;
+                    const r = document.getElementById(`reps-${exIdx}`).value;
+                    controller.handleAddSet(exIdx, w, r, card); 
+                    break;
+                case 'show-add-ex': controller.view.showAddExerciseForm(actionTarget.dataset.cat, false); break;
+                case 'toggle-category':
+                    if (e.target.closest('button')) return;
+                    const catId = actionTarget.dataset.catId;
+                    const content = document.getElementById(`cat-content-${catId}`);
+                    if (content) {
+                        const isCollapsed = content.classList.toggle('collapsed');
+                        actionTarget.classList.toggle('collapsed', isCollapsed);
+                    }
+                    break;
+            }
+        });
+
+        this.dateInput.addEventListener('change', () => controller.handleHeaderChange());
+        this.dayInput.addEventListener('change', () => controller.handleHeaderChange());
+        
+        this.btnPrev.addEventListener('click', () => controller.navigateWorkout(-1));
+        this.btnNext.addEventListener('click', () => controller.navigateWorkout(1));
+    }
+}
+
+/* --- File: js/view/historyView.js --- */
+class HistoryView {
+    constructor() {
+        this.container = document.getElementById('calendar-container');
+        this.historyViewDate = new Date();
+    }
+
+    render(model) {
+        this.container.innerHTML = '';
+        const year = this.historyViewDate.getFullYear();
+        const month = this.historyViewDate.getMonth();
+        const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+        
+        let html = `
+            <div class="calendar-controls">
+                <button class="nav-arrow" data-action="prev-month">◀</button>
+                <h3 style="margin:0">${monthNames[month]} ${year}</h3>
+                <button class="nav-arrow" data-action="next-month">▶</button>
+            </div>
+            <div class="calendar-grid">`;
+
+        ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].forEach(d => html += `<div class="calendar-header-day">${d}</div>`);
+
+        const firstDay = new Date(year, month, 1).getDay();
+        const startOffset = firstDay === 0 ? 6 : firstDay - 1;
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+        for (let i = 0; i < startOffset; i++) html += `<div class="calendar-day empty"></div>`;
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const workouts = model.workouts.filter(w => w.date === dateStr);
+            const hasWorkout = workouts.length > 0;
+            
+            html += `
+                <div class="calendar-day ${hasWorkout ? 'has-workout' : ''}" 
+                     ${hasWorkout ? `data-action="load-workout" data-id="${workouts[workouts.length-1].id}"` : ''}>
+                    ${day}${hasWorkout ? '<div class="workout-dot"></div>' : ''}
+                </div>`;
+        }
+
+        html += `</div><h4 style="margin-top:20px;">Список за месяц:</h4>`;
+        const monthWorkouts = model.workouts.filter(w => w.date.startsWith(`${year}-${String(month + 1).padStart(2, '0')}`)).reverse();
+
+        if (monthWorkouts.length === 0) {
+            html += `<p class="empty-state">Тренировок не было.</p>`;
+        } else {
+            monthWorkouts.forEach(w => {
+                const completed = w.exercises.filter(e => e.completed).length;
+                const isActive = w.id === model.activeWorkoutId;
+                html += `
+                    <div class="history-card" style="${isActive ? 'border-left-color: var(--secondary); background-color: #f4f9ff;' : ''}" 
+                         data-action="load-workout" data-id="${w.id}">
+                        <div style="flex-grow: 1;">
+                            <p class="history-date">${new Date(w.date).toLocaleDateString('ru-RU')} (${w.dayOfWeek})</p>
+                            <p class="history-stats">Выполнено: ${completed} из ${w.exercises.length}</p>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <button class="btn-delete-ex" data-action="delete-workout" data-id="${w.id}">🗑️</button>
+                            <div style="color: var(--primary); font-size: 20px;">➔</div>
+                        </div>
+                    </div>`;
+            });
+        }
+        html += `
+            <div style="text-align: center; margin-top: 20px;">
+                <button class="action-btn" data-action="load-more-workouts" style="background-color: var(--secondary); display: inline-block; width: auto; padding: 10px 20px;">Загрузить предыдущие</button>
+            </div>
+        `;
+        this.container.innerHTML = html;
+    }
+
+    bindEvents(controller) {
+        this.container.addEventListener('click', e => {
+            const btn = e.target.closest('[data-action]');
+            if (!btn) return;
+            switch(btn.dataset.action) {
+                case 'prev-month': 
+                    this.historyViewDate.setMonth(this.historyViewDate.getMonth() - 1);
+                    this.render(controller.model);
+                    break;
+                case 'next-month': 
+                    this.historyViewDate.setMonth(this.historyViewDate.getMonth() + 1);
+                    this.render(controller.model);
+                    break;
+                case 'load-workout': controller.handleLoadWorkout(btn.dataset.id); break;
+                case 'delete-workout': 
+                    e.stopPropagation();
+                    if(confirm("Удалить?")) controller.handleDeleteWorkout(btn.dataset.id); break;
+                case 'load-more-workouts': controller.loadMoreWorkouts(); break;
+            }
+        });
+    }
+}
+
+/* --- File: js/view/statisticsView.js --- */
+/**
+ * Класс для отрисовки линейного графика на нативном Canvas
+ */
+class NativeLineChart {
+    constructor(canvasId) {
+        this.canvas = document.getElementById(canvasId);
+        this.ctx = this.canvas.getContext('2d');
+        this.padding = { top: 40, right: 30, bottom: 40, left: 50 };
+    }
+
+    // Метод для установки размеров Canvas
+    resize() {
+        const width = this.canvas.offsetWidth;
+        // Если элемент скрыт (width 0), не меняем размеры, чтобы не "сломать" холст
+        if (width === 0) return;
+
+        this.canvas.width = width;
+        // На мобилках offsetHeight может быть 0, если высота не задана жестко. Используем 16:9 или offsetHeight
+        this.canvas.height = this.canvas.offsetHeight > 0 ? this.canvas.offsetHeight : width * 0.6;
+    }
+
+    render(data) {
+        const { ctx, canvas, padding } = this;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        if (!data || data.length === 0) {
+            ctx.fillStyle = '#777';
+            ctx.textAlign = 'center';
+            ctx.font = '14px Arial';
+            ctx.fillText('Нет данных для отображения графика', canvas.width / 2, canvas.height / 2);
+            // Сбрасываем размеры Canvas, если нет данных, чтобы избежать проблем с рендерингом
+            this.resize(); 
+            return;
+        }
+
+        // 1. Масштабирование
+        const values = data.map(d => d.value);
+        let minY = Math.min(...values);
+        let maxY = Math.max(...values);
+        
+        const range = maxY - minY || 10;
+        minY = Math.max(0, minY - range * 0.1);
+        // Убедимся, что maxY всегда больше minY, чтобы избежать деления на ноль
+        if (maxY <= minY) maxY = minY + 1; 
+        maxY = maxY + range * 0.1;
+
+        const getX = (i) => padding.left + (i * (canvas.width - padding.left - padding.right) / (data.length - 1 || 1));
+        const getY = (val) => canvas.height - padding.bottom - ((val - minY) * (canvas.height - padding.top - padding.bottom) / (maxY - minY));
+
+        // 2. Сетка и Оси
+        ctx.strokeStyle = '#e0e0e0';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(padding.left, padding.top);
+        ctx.lineTo(padding.left, canvas.height - padding.bottom);
+        ctx.lineTo(canvas.width - padding.right, canvas.height - padding.bottom);
+        ctx.stroke();
+
+        // 3. Подписи Y
+        ctx.fillStyle = '#888';
+        ctx.font = '10px Arial';
+        ctx.textAlign = 'right';
+        ctx.fillText(Math.round(maxY), padding.left - 10, padding.top);
+        ctx.fillText(Math.round(minY), padding.left - 10, canvas.height - padding.bottom);
+
+        // 4. Линия графика
+        ctx.beginPath();
+        ctx.strokeStyle = '#3498db';
+        ctx.lineWidth = 3;
+        ctx.lineJoin = 'round';
+
+        data.forEach((point, i) => {
+            const x = getX(i);
+            const y = getY(point.value);
+            if (i === 0) ctx.moveTo(x, y);
+            else ctx.lineTo(x, y);
+        });
+        ctx.stroke();
+
+        // 5. Точки и даты
+        data.forEach((point, i) => {
+            const x = getX(i);
+            const y = getY(point.value);
+
+            ctx.fillStyle = '#2c3e50';
+            ctx.beginPath();
+            ctx.arc(x, y, 4, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Подписи дат
+            if (i === 0 || i === data.length - 1 || data.length < 5) {
+                ctx.fillStyle = '#888';
+                ctx.textAlign = 'center';
+                const shortDate = point.date.split('-').slice(1).reverse().join('.');
+                ctx.fillText(shortDate, x, canvas.height - padding.bottom + 15);
+            }
+
+            // Значение над точкой
+            ctx.fillStyle = '#333';
+            ctx.fillText(point.value, x, y - 10);
+        });
+    }
+}
+
+class StatisticsView {
+    constructor() {
+        this.totalWorkoutsEl = document.getElementById('stat-total-workouts');
+        this.totalExercisesEl = document.getElementById('stat-total-exercises');
+        this.totalSetsEl = document.getElementById('stat-total-sets');
+        this.exerciseSelect = document.getElementById('stats-exercise-select');
+        this.chartContainer = document.getElementById('statistics-container');
+        this.statsChartCanvas = document.getElementById('stats-chart'); // Получаем ссылку на Canvas
+        this.chart = null;
+        this.currentMetric = 'max';
+    }
+
+    render(model) {
+        if (!this.totalWorkoutsEl) return;
+        
+        const totalWorkouts = model.workouts.length;
+        let totalExercises = 0;
+        let totalSets = 0;
+
+        model.workouts.forEach(w => {
+            w.exercises.forEach(ex => {
+                if (ex.completed) totalExercises++;
+                totalSets += ex.sets.length;
+            });
+        });
+
+        this.totalWorkoutsEl.textContent = totalWorkouts;
+        this.totalExercisesEl.textContent = totalExercises;
+        this.totalSetsEl.textContent = totalSets;
+
+        if (!this.chart) {
+            this.chart = new NativeLineChart('stats-chart');
+            this.chart.resize(); // Инициализируем размер Canvas при создании
+        }
+        this.populateExerciseSelect(model);
+        this.updateChart(model);
+    }
+
+    populateExerciseSelect(model) {
+        const grouped = model.getGroupedExerciseLibrary();
+        const currentValue = this.exerciseSelect.value;
+        let firstExerciseId = '';
+        
+        let html = '<option value="">-- Выберите упражнение --</option>';
+        Object.values(grouped).forEach(group => {
+            html += `<optgroup label="${group.categoryName}">`;
+            group.exercises.forEach(ex => {
+                html += `<option value="${ex.id}" ${ex.id === currentValue ? 'selected' : ''}>${ex.name}</option>`;
+                if (!firstExerciseId) firstExerciseId = ex.id; // Запоминаем ID первого упражнения
+            });
+            html += `</optgroup>`;
+        });
+        
+        this.exerciseSelect.innerHTML = html;
+
+        // Выбираем первое упражнение по умолчанию, если ничего не выбрано
+        if (!this.exerciseSelect.value && firstExerciseId) {
+            // Небольшая задержка, чтобы DOM успел обновиться
+            setTimeout(() => {
+                this.exerciseSelect.value = firstExerciseId;
+                this.updateChart(model);
+            }, 0);
+        }
+
+        // Добавляем обработчик изменения размера окна для респонсивности Canvas
+        window.removeEventListener('resize', this._onResize); // Удаляем предыдущий, если есть
+        this._onResize = () => this.chart.resize();
+        window.addEventListener('resize', this._onResize);
+    }
+
+    bindEvents(controller) {
+        if (!this.chartContainer) return;
+
+        this.chartContainer.addEventListener('click', (e) => {
+            const metricBtn = e.target.closest('.chart-type-selector button');
+            if (metricBtn) {
+                this.currentMetric = metricBtn.dataset.metric;
+                document.querySelectorAll('.chart-type-selector button').forEach(b => b.classList.toggle('active', b === metricBtn));
+                this.updateChart(controller.model);
+                return;
+            }
+
+            if (e.target.closest('#btn-stats-help')) {
+                alert(
+                    "Типы графиков:\n" +
+                    "1. Max Вес: Самый тяжелый поднятый вес за тренировку.\n" +
+                    "2. 1RM (Эпли): Прогноз веса на 1 раз. Формула: Вес * (1 + Повторения / 30).\n" +
+                    "3. Средний вес: Сумма весов всех подходов / количество подходов."
+                );
+            }
+        });
+
+        this.exerciseSelect.addEventListener('change', () => {
+            this.updateChart(controller.model);
+        });
+    }
+
+    updateChart(model) {
+        const exerciseId = this.exerciseSelect.value;
+        if (!exerciseId) {
+            if (this.chart) this.chart.render([]);
+            this.chart.resize(); // Сбрасываем размер, если нет данных
+            return;
+        }
+        const data = model.getExerciseProgressData(exerciseId, this.currentMetric);
+        this.chart.render(data);
+    }
+}
+
+/* --- File: js/view/settingsView.js --- */
+class SettingsView {
+    constructor() {
+        this.templatesList = document.getElementById('templates-list');
+        this.libraryList = document.getElementById('library-list');
+        this.categoryList = document.getElementById('category-list');
+        this.currentTemplateExercises = [];
+        
+        this.els = {
+            accordion: document.getElementById('settings-accordion'),
+            newCategoryName: document.getElementById('newCategoryName'),
+            btnAddCategory: document.getElementById('btn-add-category'),
+            btnOpenTplEditor: document.getElementById('btn-open-template-editor'),
+            btnCloseTplEditor: document.getElementById('btn-close-template-editor'),
+            btnCancelTplStep: document.getElementById('btn-cancel-template-step'),
+            btnAddExToTpl: document.getElementById('btn-add-ex-to-template'),
+            btnSaveTpl: document.getElementById('btn-save-template'),
+            stepOptions: document.getElementById('step-options'),
+            tplEditor: document.getElementById('template-editor'),
+            tplEditorTitle: document.getElementById('template-editor-title'),
+            tplName: document.getElementById('template-name'),
+            editTplId: document.getElementById('edit-template-id'),
+            tplExercisesList: document.getElementById('template-exercises-list'),
+            tplStepContainer: document.getElementById('template-step-container'),
+            stepInstruction: document.getElementById('step-instruction')
+        };
+    }
+
+    render(model) {
+        this.renderCategories(model);
+        this.renderLibrary(model);
+        this.renderTemplates(model);
+    }
+
+    renderCategories(model) {
+        this.categoryList.innerHTML = model.categories.map(cat => `
+            <div class="category-item">
+                <span>${cat.name}</span>
+                <button class="btn-delete-ex" data-action="delete-cat" data-id="${cat.id}">🗑️</button>
+            </div>
+        `).join('');
+    }
+
+    renderLibrary(model) {
+        let html = '';
+        if (model.exercises.length === 0) {
+            html = '<p class="empty-state">Библиотека пуста.</p>';
+        } else {
+            const grouped = {};
+            model.exercises.forEach(ex => {
+                if (!grouped[ex.categoryId]) grouped[ex.categoryId] = [];
+                grouped[ex.categoryId].push(ex);
+            });
+
+            model.categories.forEach(cat => {
+                const items = grouped[cat.id];
+                if (items && items.length > 0) {
+                    html += `
+                        <div class="category-header" style="margin-top:15px;">
+                            <div class="category-title" style="font-size: 16px;">${cat.name}</div>
+                            <button class="btn-add-to-cat" data-action="show-add-lib" data-cat="${cat.id}">+</button>
+                        </div>`;
+                    items.sort((a, b) => a.name.localeCompare(b.name)).forEach(ex => {
+                        html += `
+                            <div class="category-item" style="border-left-color: var(--secondary);">
+                                <div style="flex:1">
+                                    <div style="font-weight:bold">${ex.name}</div>
+                                    <div style="font-size:12px; color:var(--text-muted)">${ex.target}</div>
+                                </div>
+                                <div class="set-actions">
+                                    <button class="btn-edit" data-action="edit-lib" data-id="${ex.id}">✎</button>
+                                    <button class="btn-delete-ex" data-action="delete-lib" data-id="${ex.id}" style="margin-left: 10px;">🗑️</button>
+                                </div>
+                            </div>`;
+                    });
+                }
+            });
+        }
+        this.libraryList.innerHTML = html;
+    }
+
+    renderTemplates(model) {
+        if (model.templates.length === 0) {
+            this.templatesList.innerHTML = '<p class="empty-state">Нет созданных шаблонов.</p>';
+        } else {
+            this.templatesList.innerHTML = model.templates.map(tpl => `
+                <div class="category-item" style="border-left-color: var(--secondary);">
+                    <div style="flex:1">
+                        <div style="font-weight:bold">${tpl.name}</div>
+                        <div style="font-size:12px; color:var(--text-muted)">Упражнений: ${tpl.exercises.length}</div>
+                    </div>
+                    <div class="set-actions">
+                        <button class="btn-edit" data-action="edit-template" data-id="${tpl.id}">✎</button>
+                        <button class="btn-delete-ex" data-action="delete-template" data-id="${tpl.id}" style="margin-left: 10px;">🗑️</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+
+    renderTemplateExercisesList(model) {
+        this.els.tplExercisesList.innerHTML = this.currentTemplateExercises.length ? '<p style="font-size:12px; margin-bottom:5px; color:var(--text-muted);">Состав шаблона:</p>' : '';
+        this.currentTemplateExercises.forEach((exId, idx) => {
+            const ex = model.getLibraryExercise(exId);
+            this.els.tplExercisesList.innerHTML += `
+                <div class="set-item">
+                    <span>${ex.name} <small>(${model.getCategoryName(ex.categoryId)})</small></span>
+                    <button class="btn-delete" data-action="remove-ex-template" data-idx="${idx}">✖</button>
+                </div>`;
+        });
+    }
+
+    bindEvents(controller) {
+        this.els.accordion.addEventListener('click', e => {
+            const header = e.target.closest('.collapsible-header');
+            if (header) {
+                header.classList.toggle('open');
+                const body = header.nextElementSibling;
+                if (body && body.classList.contains('collapsible-body')) body.classList.toggle('open');
+            }
+
+            const btn = e.target.closest('[data-action]');
+            if (!btn) return;
+            switch(btn.dataset.action) {
+                case 'delete-cat': controller.handleDeleteCategory(btn.dataset.id); break;
+                case 'show-add-lib': controller.view.showAddExerciseForm(btn.dataset.cat, true); break;
+                case 'edit-lib': controller.handleEditLibrary(btn.dataset.id); break;
+                case 'delete-lib': controller.handleDeleteLibrary(btn.dataset.id); break;
+                case 'edit-template': this.openTemplateEditor(controller.model, btn.dataset.id); break;
+                case 'delete-template': controller.handleDeleteTemplate(btn.dataset.id); break;
+                case 'remove-ex-template': 
+                    this.currentTemplateExercises.splice(btn.dataset.idx, 1);
+                    this.renderTemplateExercisesList(controller.model);
+                    break;
+            }
+        });
+
+        this.els.btnAddCategory.addEventListener('click', () => {
+            controller.handleAddCategory(this.els.newCategoryName.value);
+        });
+
+        // Шаблоны: редактор
+        this.els.btnOpenTplEditor.addEventListener('click', () => this.openTemplateEditor(controller.model));
+        this.els.btnCloseTplEditor.addEventListener('click', () => this.els.tplEditor.style.display='none');
+        this.els.btnCancelTplStep.addEventListener('click', () => this.cancelTemplateStep());
+        this.els.btnAddExToTpl.addEventListener('click', () => this.startAddExToTemplate(controller.model));
+        
+        this.els.btnSaveTpl.addEventListener('click', () => {
+            controller.handleSaveTemplate(
+                this.els.editTplId.value,
+                this.els.tplName.value,
+                this.currentTemplateExercises
+            );
+            this.els.tplEditor.style.display = 'none';
+        });
+
+        this.els.stepOptions.addEventListener('click', e => {
+            if(e.target.tagName !== 'BUTTON') return;
+            if (e.target.dataset.cat) {
+                this.selectCategoryForTemplate(controller.model, e.target.dataset.cat);
+            } else if (e.target.dataset.ex) {
+                this.currentTemplateExercises.push(e.target.dataset.ex);
+                this.cancelTemplateStep();
+                this.renderTemplateExercisesList(controller.model);
+            }
+        });
+    }
+
+    openTemplateEditor(model, id = null) {
+        this.cancelTemplateStep();
+        this.els.tplEditor.style.display = 'block';
+        if (id) {
+            const tpl = model.templates.find(t => t.id === id);
+            this.els.tplEditorTitle.innerText = 'Редактировать шаблон';
+            this.els.tplName.value = tpl.name;
+            this.els.editTplId.value = tpl.id;
+            this.currentTemplateExercises = [...tpl.exercises];
+        } else {
+            this.els.tplEditorTitle.innerText = 'Новый шаблон';
+            this.els.tplName.value = '';
+            this.els.editTplId.value = '';
+            this.currentTemplateExercises = [];
+        }
+        this.renderTemplateExercisesList(model);
+    }
+
+    startAddExToTemplate(model) {
+        this.els.tplStepContainer.style.display = 'block';
+        this.els.btnAddExToTpl.style.display = 'none';
+        this.els.stepInstruction.innerText = '1. Выберите категорию:';
+        
+        this.els.stepOptions.innerHTML = model.categories.map(cat => `<button data-cat="${cat.id}" style="padding:5px 10px; cursor:pointer;">${cat.name}</button>`).join('');
+    }
+
+    selectCategoryForTemplate(model, catId) {
+        this.els.stepInstruction.innerText = `2. Выберите упражнение:`;
+        const filtered = model.exercises.filter(ex => ex.categoryId === catId);
+        const options = this.els.stepOptions;
+        if (filtered.length === 0) {
+            options.innerHTML = '<p style="font-size:12px;">В этой категории нет упражнений.</p>';
+        } else {
+            options.innerHTML = filtered.map(ex => `<button data-ex="${ex.id}" style="padding:5px 10px; cursor:pointer;">${ex.name}</button>`).join('');
+        }
+    }
+
+    cancelTemplateStep() {
+        this.els.tplStepContainer.style.display = 'none';
+        this.els.btnAddExToTpl.style.display = 'block';
+    }
+}
+
+/* --- File: js/view/appView.js --- */
+
+
+
+
+
+class AppView {
+    constructor() {
+        this.workoutView = new WorkoutView();
+        this.historyView = new HistoryView();
+        this.settingsView = new SettingsView();
+        this.statisticsView = new StatisticsView();
+        this.addingToLibraryOnly = false;
+        
+        this.timeContainer = document.getElementById('estimated-time-container');
+
+        this.els = {
+            mainNavbar: document.getElementById('main-navbar'),
+            btnHamburger: document.getElementById('btn-hamburger'),
+            sideMenu: document.getElementById('side-menu'),
+            menuOverlay: document.getElementById('menu-overlay'),
+            pageTitle: document.getElementById('page-title'),
+            btnPrevWorkout: document.getElementById('btn-prev-workout'),
+            btnNextWorkout: document.getElementById('btn-next-workout'),
+            btnShowAddEx: document.getElementById('btn-show-add-ex'),
+            btnShowAddLibEx: document.getElementById('btn-show-add-lib-ex'),
+            btnCancelNewEx: document.getElementById('btn-cancel-new-ex'),
+            exLibSelect: document.getElementById('exerciseLibrarySelect'),
+            newExName: document.getElementById('newExName'),
+            newExCat: document.getElementById('newExCat'),
+            newExTarget: document.getElementById('newExTarget'),
+            btnSaveNewEx: document.getElementById('btn-save-new-ex'),
+            btnShowTemplates: document.getElementById('btn-show-templates'),
+            tplOptionsUi: document.getElementById('template-options-ui'),
+            tplSelectionContainer: document.getElementById('template-selection-container'),
+            btnCancelTpl: document.getElementById('btn-cancel-template'),
+            btnConfirmTpl: document.getElementById('btn-confirm-template'),
+            btnExport: document.getElementById('btn-export-data'),
+            btnImport: document.getElementById('btn-import-data'),
+            fileInput: document.getElementById('fileInput'),
+            addExFormContainer: document.getElementById('add-ex-form-container'),
+            libSelectWrapper: document.getElementById('library-select-wrapper'),
+            tabWorkout: document.getElementById('tab-workout'),
+            tplSelectDropdown: () => document.getElementById('template-select-dropdown')
+        };
+    }
+
+    init(controller) {
+        this.bindNavigation(controller);
+        this.workoutView.bindEvents(controller);
+        this.historyView.bindEvents(controller);
+        this.settingsView.bindEvents(controller);
+        this.statisticsView.bindEvents(controller);
+        this.bindModals(controller);
+    }
+
+    renderAll(model) {
+        this.workoutView.render(model);
+        this.historyView.render(model);
+        this.settingsView.render(model);
+        this.statisticsView.render(model);
+        this.updateProgress(model);
+        this.updateNavButtons(model);
+    }
+
+    updateProgress(model) {
+        const workout = model.getActiveWorkout();
+        let pct = 0;
+        
+        if (workout && workout.exercises.length > 0) {
+            let totalExpectedSets = 0;
+            let totalCompletedSets = 0;
+
+            workout.exercises.forEach(ex => {
+                const expectedSets = Math.max(3, ex.sets.length);
+                totalExpectedSets += expectedSets;
+                
+                if (ex.completed) {
+                    totalCompletedSets += expectedSets;
+                } else {
+                    totalCompletedSets += ex.sets.length;
+                }
+            });
+
+            if (totalExpectedSets > 0) {
+                pct = Math.round((totalCompletedSets / totalExpectedSets) * 100);
+            }
+        }
+        
+        this.els.mainNavbar.style.setProperty('--progress', `${pct}%`);
+
+        const totalMinutes = Math.round((pct / 100) * 90);
+        const hours = Math.floor(totalMinutes / 60);
+        const mins = totalMinutes % 60;
+        
+        const timeStr = `⏱️ ${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+        
+        if (this.timeContainer) {
+            this.timeContainer.textContent = timeStr;
+        }
+    }
+
+    updateNavButtons(model) {
+        const idx = model.workouts.findIndex(w => w.id === model.activeWorkoutId);
+        if (this.els.btnPrevWorkout) this.els.btnPrevWorkout.disabled = idx <= 0;
+        if (this.els.btnNextWorkout) this.els.btnNextWorkout.disabled = idx === -1 || idx >= model.workouts.length - 1;
+    }
+
+    bindNavigation(controller) {
+        const toggleMenu = () => {
+            this.els.sideMenu.classList.toggle('open');
+            this.els.menuOverlay.classList.toggle('open');
+        };
+        this.els.btnHamburger.addEventListener('click', toggleMenu);
+        this.els.menuOverlay.addEventListener('click', toggleMenu);
+
+        this.els.sideMenu.addEventListener('click', e => {
+            if(e.target.classList.contains('nav-btn')) {
+                window.location.hash = e.target.dataset.tab;
+                toggleMenu();
+            }
+        });
+    }
+
+    switchTab(tabName) {
+        ['workout', 'history', 'statistics', 'settings'].forEach(tab => {
+            const btn = document.querySelector(`.nav-btn[data-tab="${tab}"]`);
+            const content = document.getElementById(`tab-${tab}`);
+            if (btn) btn.classList.remove('active');
+            if (content) content.classList.remove('active');
+        });
+        
+        const activeBtn = document.querySelector(`.nav-btn[data-tab="${tabName}"]`);
+        const activeContent = document.getElementById(`tab-${tabName}`);
+        
+        if (activeBtn) activeBtn.classList.add('active');
+        if (activeContent) activeContent.classList.add('active');
+        
+        const titles = { 'workout': 'Тренировка', 'history': 'История', 'statistics': 'Статистика', 'settings': 'Настройки' };
+        this.els.pageTitle.innerText = titles[tabName] || 'Тренировка';
+        
+        if (tabName !== 'workout') {
+            this.els.mainNavbar.style.setProperty('--progress', '0%');
+            if (this.timeContainer) this.timeContainer.style.display = 'none';
+        } else {
+            if (this.timeContainer) this.timeContainer.style.display = 'block';
+            if (window.app && window.app.model) this.updateProgress(window.app.model); 
+        }
+    }
+
+    
+    bindModals(controller) {
+        this.els.btnShowAddEx.addEventListener('click', () => this.showAddExerciseForm(null, false));
+        this.els.btnShowAddLibEx.addEventListener('click', () => this.showAddExerciseForm(null, true));
+        this.els.btnCancelNewEx.addEventListener('click', () => this.hideAddExerciseForm());
+        
+        this.els.exLibSelect.addEventListener('change', (e) => {
+            const id = e.target.value;
+            if (id === 'new') {
+                this.els.newExName.value = ''; this.els.newExTarget.value = '';
+                this.els.newExName.disabled = false; this.els.newExCat.disabled = false; this.els.newExTarget.disabled = false;
+            } else {
+                const ex = controller.model.getLibraryExercise(id);
+                this.els.newExName.value = ex.name; this.els.newExCat.value = ex.categoryId; this.els.newExTarget.value = ex.target;
+                this.els.newExName.disabled = true; this.els.newExCat.disabled = true; this.els.newExTarget.disabled = true;
+            }
+        });
+
+        this.els.btnSaveNewEx.addEventListener('click', () => controller.handleSaveNewExercise(this.addingToLibraryOnly));
+
+        this.els.btnShowTemplates.addEventListener('click', () => {
+            if (controller.model.templates.length === 0) {
+                this.els.tplOptionsUi.innerHTML = '<p>Нет шаблонов.</p>';
+            } else {
+                this.els.tplOptionsUi.innerHTML = '<select id="template-select-dropdown" style="width:100%; padding:10px;"><option value="empty">Пустая тренировка</option>' + 
+                    controller.model.templates.map(t => `<option value="${t.id}">${t.name}</option>`).join('') + '</select>';
+            }
+            this.els.tplSelectionContainer.style.display = 'block';
+            this.els.btnShowTemplates.style.display = 'none';
+        });
+
+        this.els.btnCancelTpl.addEventListener('click', () => {
+            this.els.tplSelectionContainer.style.display = 'none';
+            this.els.btnShowTemplates.style.display = 'block';
+        });
+
+        this.els.btnConfirmTpl.addEventListener('click', () => {
+            const sel = this.els.tplSelectDropdown();
+            const val = sel ? sel.value : 'empty';
+            controller.handleStartWorkout(val === 'empty' ? null : val);
+            this.els.tplSelectionContainer.style.display = 'none';
+            this.els.btnShowTemplates.style.display = 'block';
+        });
+
+        this.els.btnExport.addEventListener('click', () => controller.handleExport());
+        this.els.btnImport.addEventListener('click', () => this.els.fileInput.click());
+        this.els.fileInput.addEventListener('change', (e) => controller.handleImport(e));
+    }
+
+    showAddExerciseForm(categoryId, isLibraryOnly) {
+        this.addingToLibraryOnly = isLibraryOnly;
+        this.els.addExFormContainer.style.display = 'block';
+        
+        this.els.btnShowAddEx.style.display = isLibraryOnly ? 'block' : 'none';
+        this.els.btnShowAddLibEx.style.display = isLibraryOnly ? 'none' : 'block';
+        this.els.libSelectWrapper.style.display = isLibraryOnly ? 'none' : 'block';
+        
+        window.app.populateAddExForm(categoryId, isLibraryOnly);
+        
+        if (categoryId) {
+            this.els.newExCat.value = categoryId;
+            this.els.newExCat.disabled = true;
+        } else {
+            this.els.newExCat.disabled = false;
+        }
+
+        const parentBtn = isLibraryOnly ? this.els.btnShowAddLibEx : this.els.btnShowAddEx;
+        parentBtn.parentNode.insertBefore(this.els.addExFormContainer, parentBtn);
+        this.els.addExFormContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    hideAddExerciseForm() {
+        this.els.addExFormContainer.style.display = 'none';
+        this.els.btnShowAddEx.style.display = 'block';
+        const libBtn = this.els.btnShowAddLibEx;
+        if(libBtn) libBtn.style.display = 'block';
+        this.els.tabWorkout.appendChild(this.els.addExFormContainer);
+        this.els.newExName.value = '';
+        this.els.newExTarget.value = '';
+    }
+}
+
+/* --- File: js/pwa.js --- */
+function injectPWA() {
+    const iconSvg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="#2c3e50"/><rect x="64" y="208" width="64" height="96" rx="16" fill="#4CAF50"/><rect x="384" y="208" width="64" height="96" rx="16" fill="#4CAF50"/><rect x="160" y="232" width="32" height="48" rx="8" fill="#4CAF50"/><rect x="320" y="232" width="32" height="48" rx="8" fill="#4CAF50"/><rect x="192" y="240" width="128" height="32" fill="#4CAF50"/></svg>`;
+    const iconBase64 = btoa(iconSvg);
+    const iconDataUrl = `data:image/svg+xml;base64,${iconBase64}`;
+
+    const linkAppleIcon = document.createElement('link');
+    linkAppleIcon.rel = 'apple-touch-icon';
+    linkAppleIcon.href = iconDataUrl;
+    document.head.appendChild(linkAppleIcon);
+
+    const manifest = {
+        name: "Дневник Тренировок",
+        short_name: "Тренировки",
+        display: "standalone",
+        background_color: "#f4f7f6",
+        theme_color: "#2c3e50",
+        icons: [{ src: iconDataUrl, sizes: "512x512", type: "image/svg+xml" }],
+        start_url: "."
+    };
+    
+    const manifestDataUrl = `data:application/json;charset=utf-8,${encodeURIComponent(JSON.stringify(manifest))}`;
+    const linkManifest = document.createElement('link');
+    linkManifest.rel = 'manifest';
+    linkManifest.href = manifestDataUrl;
+    document.head.appendChild(linkManifest);
+}
+
+/* --- File: js/app.js --- */
+
+
+
+
+
+class AppController {
+    constructor(model, view) {
+        this.model = model;
+        this.view = view;
+    }
+
+    async init() {
+        await this.model.init();
+        this.view.init(this);
+        
+        window.addEventListener('hashchange', () => this.handleRouting());
+        this.handleRouting();
+    }
+
+    handleRouting() {
+        let hash = window.location.hash.substring(1);
+        const validTabs = ['workout', 'history', 'statistics', 'settings'];
+        if (!validTabs.includes(hash)) {
+            // history.replaceState часто блокируется на протоколе file://
+            if (window.location.protocol === 'file:') {
+                window.location.hash = '#workout';
+            } else {
+                history.replaceState(null, null, '#workout');
+            }
+            hash = 'workout';
+        }
+        this.view.switchTab(hash);
+        this.view.renderAll(this.model);
+    }
+
+    async loadMoreWorkouts() {
+        this.model.workoutsOffset += 20;
+        const moreWorkouts = await this.model.getWorkoutsByPage(20, this.model.workoutsOffset);
+        if (moreWorkouts.length > 0) {
+            this.model.workouts.unshift(...moreWorkouts.reverse());
+            this.view.historyView.render(this.model);
+        } else {
+            alert('Больше нет сохраненных тренировок.');
+        }
+    }
+
+    async handleToggleComplete(exIndex, cardElement) {
+        await this.model.toggleComplete(exIndex);
+        const isCompleted = this.model.getActiveWorkout().exercises[exIndex].completed;
+        if (cardElement) {
+            cardElement.classList.toggle('completed', isCompleted);
+            this.view.updateProgress(this.model);
+            this.view.statisticsView.render(this.model);
+        } else {
+            this.view.renderAll(this.model);
+        }
+    }
+
+    async handleAddSet(exIndex, weight, reps, cardElement) {
+        if (!weight || !reps) return alert("Введите вес и повторения");
+        await this.model.addSet(exIndex, weight, reps);
+        this.updateWorkoutAndStats(exIndex, cardElement);
+    }
+
+    async handleEditSet(exIdx, setIdx, cardElement) {
+        const w = this.model.getActiveWorkout().exercises[exIdx].sets[setIdx];
+        const newW = prompt("Новый вес (кг):", w.weight); if (newW === null) return;
+        const newR = prompt("Новые повторения:", w.reps); if (newR === null) return;
+        if (newW.trim() && newR.trim()) {
+            await this.model.editSet(exIdx, setIdx, newW, newR);
+            this.updateWorkoutAndStats(exIdx, cardElement);
+        }
+    }
+
+    async handleDeleteSet(exIdx, setIdx, cardElement) {
+        if (confirm("Удалить подход?")) {
+            await this.model.deleteSet(exIdx, setIdx);
+            this.updateWorkoutAndStats(exIdx, cardElement);
+        }
+    }
+
+    async handleDeleteExercise(exIdx) {
+        if (confirm("Удалить упражнение из тренировки?")) {
+            await this.model.deleteExerciseFromWorkout(exIdx);
+            this.view.workoutView.render(this.model);
+            this.view.updateProgress(this.model);
+            this.view.statisticsView.render(this.model);
+        }
+    }
+
+    updateWorkoutAndStats(exIndex, cardElement) {
+        if (cardElement) {
+            this.view.workoutView.renderCardSets(this.model, exIndex, cardElement);
+        } else {
+            this.view.workoutView.render(this.model);
+        }
+        this.view.updateProgress(this.model);
+        this.view.statisticsView.render(this.model);
+    }
+
+    async handleToggleCategory(header) {
+        const catId = header.dataset.catId;
+        const content = document.getElementById(`cat-content-${catId}`);
+        if (content) {
+            const isCollapsed = content.classList.toggle('collapsed');
+            header.classList.toggle('collapsed', isCollapsed);
+        }
+    }
+
+    async handleHeaderChange() {
+        const d = this.view.workoutView.dateInput.value;
+        const day = this.view.workoutView.dayInput.value;
+        await this.model.updateWorkoutHeader(d, day);
+        this.view.historyView.render(this.model);
+    }
+
+    async navigateWorkout(dir) {
+        const idx = this.model.workouts.findIndex(w => w.id === this.model.activeWorkoutId);
+        if (dir === -1 && idx > 0) {
+            await this.model.saveActiveWorkoutId(this.model.workouts[idx - 1].id);
+        } else if (dir === 1 && idx < this.model.workouts.length - 1) {
+            await this.model.saveActiveWorkoutId(this.model.workouts[idx + 1].id);
+        }
+        this.view.renderAll(this.model);
+    }
+
+    async handleStartWorkout(templateId) {
+        await this.model.addWorkout(templateId);
+        window.location.hash = 'workout';
+    }
+
+    async handleLoadWorkout(id) {
+        await this.model.saveActiveWorkoutId(id);
+        window.location.hash = 'workout';
+    }
+
+    async handleDeleteWorkout(id) {
+        if(confirm("Удалить тренировку?")) {
+            await this.model.deleteWorkout(id);
+            this.view.renderAll(this.model);
+        }
+    }
+
+    async handleAddCategory(name) {
+        if (!name.trim()) return;
+        if(await this.model.addCategory(name.trim())) {
+            this.view.settingsView.render(this.model);
+        } else {
+            alert("Такая категория уже есть!");
+        }
+    }
+
+    async handleDeleteCategory(id) {
+        await this.model.deleteCategory(id);
+        this.view.renderAll(this.model);
+    }
+
+    async handleEditLibrary(id) {
+        const ex = this.model.getLibraryExercise(id);
+        const name = prompt("Название:", ex.name); if(name===null) return;
+        const cat = prompt("Категория:", this.model.getCategoryName(ex.categoryId)); if(cat===null) return;
+        const target = prompt("Цель:", ex.target); if(target===null) return;
+        
+        const foundCat = this.model.categories.find(c => c.name === cat.trim());
+        await this.model.editLibraryExercise(id, name, foundCat ? foundCat.id : ex.categoryId, target);
+        this.view.renderAll(this.model);
+    }
+
+    async handleDeleteLibrary(id) {
+        await this.model.deleteLibraryExercise(id);
+        this.view.renderAll(this.model);
+    }
+
+    async handleSaveTemplate(id, name, exercises) {
+        if (!name.trim()) return alert("Введите имя!");
+        await this.model.saveTemplate(id, name, exercises);
+        this.view.settingsView.render(this.model);
+    }
+
+    async handleSaveNewExercise(isLibraryOnly) {
+        const libId = this.view.els.exLibSelect.value;
+        let exerciseId = libId;
+
+        if (libId === 'new') {
+            const name = this.view.els.newExName.value;
+            if(!name) return alert("Введите название");
+            exerciseId = await this.model.addLibraryExercise(name, this.view.els.newExCat.value, this.view.els.newExTarget.value);
+        }
+
+        if (!isLibraryOnly) {
+            await this.model.addExerciseToWorkout(exerciseId);
+        }
+        this.view.hideAddExerciseForm();
+        this.view.renderAll(this.model);
+    }
+
+    handleExport() {
+        this.view.showLoading?.('Подготовка файла...');
+        setTimeout(() => {
+            const data = this.model.getExportData();
+            if (data.workouts.length === 0 && data.exercises.length === 0) return alert("Нет данных");
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = `gym_history_${new Date().toISOString().split('T')[0]}.json`;
+            a.click();
+        }, 50);
+    }
+
+    async handleImport(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                if(!confirm("Все текущие данные будут удалены. Продолжить?")) return;
+                await this.model.importData(JSON.parse(e.target.result));
+                alert("Импорт завершен!");
+                location.reload();
+            } catch (err) { alert("Ошибка импорта"); }
+        };
+        reader.readAsText(file);
+    }
+    
+    populateAddExForm(catId, isLibraryOnly) {
+        this.view.populateAddExForm(this.model, catId, isLibraryOnly);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    injectPWA();
+    const db = new GymDatabase();
+    const model = new AppModel(db);
+    const view = new AppView();
+    const controller = new AppController(model, view);
+    controller.init();
+});
+
+</script>
+</body>
+</html>
