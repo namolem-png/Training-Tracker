@@ -1,0 +1,391 @@
+{
+  "workouts": [
+    {
+      "id": "1776591094132",
+      "date": "2026-04-19",
+      "dayOfWeek": "Воскресенье",
+      "exercises": [
+        { "id": "inst_bench_apr19", "exerciseId": "lib_chest_bench", "completed": true, "sets": [{ "weight": "35", "reps": "8" }] },
+        { "id": "inst_1", "exerciseId": "e1", "completed": true, "sets": [{ "weight": "20", "reps": "10" }, { "weight": "25", "reps": "10" }, { "weight": "25", "reps": "10" }] },
+        { "id": "inst_2", "exerciseId": "e2", "completed": true, "sets": [{ "weight": "10", "reps": "12" }, { "weight": "20", "reps": "10" }, { "weight": "15", "reps": "10" }] },
+        { "id": "inst_3", "exerciseId": "e3", "completed": true, "sets": [{ "weight": "20", "reps": "12" }, { "weight": "25", "reps": "10" }, { "weight": "25", "reps": "10" }] },
+        { "id": "inst_4", "exerciseId": "e4", "completed": true, "sets": [{ "weight": "15", "reps": "10" }, { "weight": "20", "reps": "12" }, { "weight": "20", "reps": "10" }] },
+        { "id": "inst_6", "exerciseId": "e6", "completed": true, "sets": [{ "weight": "0", "reps": "15" }, { "weight": "0", "reps": "20" }, { "weight": "0", "reps": "20" }] },
+        { "id": "inst_8", "exerciseId": "e8", "completed": true, "sets": [{ "weight": "40", "reps": "10" }, { "weight": "40", "reps": "12" }, { "weight": "40", "reps": "12" }] },
+        { "id": "inst_9", "exerciseId": "e9", "completed": true, "sets": [{ "weight": "10", "reps": "10" }, { "weight": "15", "reps": "12" }, { "weight": "20", "reps": "10" }] },
+        { "id": "inst_10", "exerciseId": "e10", "completed": true, "sets": [{ "weight": "20", "reps": "10" }, { "weight": "15", "reps": "10" }, { "weight": "15", "reps": "10" }] },
+        { "id": "inst_13", "exerciseId": "e13", "completed": true, "sets": [{ "weight": "5", "reps": "12" }, { "weight": "5", "reps": "10" }, { "weight": "5", "reps": "10" }] },
+        { "id": "inst_press_01_1", "exerciseId": "lib_press_01", "completed": true, "sets": [{ "weight": "0", "reps": "20" }, { "weight": "0", "reps": "18" }] }
+      ]
+    },
+    {
+      "id": "1776757713666",
+      "date": "2026-04-21",
+      "dayOfWeek": "Вторник",
+      "exercises": [
+        { "id": "inst_bench_apr21", "exerciseId": "lib_chest_bench", "completed": true, "sets": [{ "weight": "35", "reps": "10" }] },
+        { "id": "inst_14", "exerciseId": "e1", "completed": true, "sets": [{ "weight": "20", "reps": "12" }, { "weight": "25", "reps": "10" }, { "weight": "25", "reps": "10" }] },
+        { "id": "inst_15", "exerciseId": "e2", "completed": true, "sets": [{ "weight": "15", "reps": "12" }, { "weight": "20", "reps": "12" }, { "weight": "25", "reps": "10" }] },
+        { "id": "inst_16", "exerciseId": "e3", "completed": true, "sets": [{ "weight": "20", "reps": "12" }, { "weight": "25", "reps": "10" }, { "weight": "30", "reps": "10" }] },
+        { "id": "inst_17", "exerciseId": "e4", "completed": true, "sets": [{ "weight": "15", "reps": "12" }, { "weight": "20", "reps": "12" }, { "weight": "25", "reps": "12" }] },
+        { "id": "inst_19", "exerciseId": "e6", "completed": true, "sets": [{ "weight": "0", "reps": "15" }, { "weight": "0", "reps": "20" }, { "weight": "0", "reps": "20" }] },
+        { "id": "inst_21", "exerciseId": "e8", "completed": true, "sets": [{ "weight": "40", "reps": "12" }, { "weight": "50", "reps": "10" }, { "weight": "50", "reps": "10" }, { "weight": "50", "reps": "12" }] },
+        { "id": "inst_22", "exerciseId": "e9", "completed": true, "sets": [{ "weight": "15", "reps": "12" }, { "weight": "20", "reps": "12" }, { "weight": "20", "reps": "12" }] },
+        { "id": "inst_23", "exerciseId": "e10", "completed": true, "sets": [{ "weight": "15", "reps": "10" }, { "weight": "20", "reps": "10" }, { "weight": "20", "reps": "12" }] },
+        { "id": "inst_26", "exerciseId": "e13", "completed": true, "sets": [{ "weight": "7.5", "reps": "10" }, { "weight": "7.5", "reps": "10" }, { "weight": "7.5", "reps": "10" }] },
+        { "id": "inst_press_01_2", "exerciseId": "lib_press_01", "completed": true, "sets": [{ "weight": "0", "reps": "20" }, { "weight": "0", "reps": "18" }] }
+      ]
+    },
+    {
+      "id": "1740733200000",
+      "date": "2026-02-28",
+      "dayOfWeek": "Суббота",
+      "exercises": [
+        { "id": "gen_20_1", "exerciseId": "lib_chest_bench", "completed": true, "sets": [{ "weight": "22.5", "reps": "8" }] }
+      ]
+    },
+    {
+      "id": "1776591094132",
+      "date": "2026-04-19",
+      "dayOfWeek": "Воскресенье",
+      "exercises": [
+        { "id": "inst_1", "exerciseId": "e1", "completed": true, "sets": [{ "weight": "20", "reps": "10" }, { "weight": "25", "reps": "10" }, { "weight": "25", "reps": "10" }] },
+        { "id": "inst_2", "exerciseId": "e2", "completed": true, "sets": [{ "weight": "10", "reps": "12" }, { "weight": "20", "reps": "10" }, { "weight": "15", "reps": "10" }] },
+        { "id": "inst_3", "exerciseId": "e3", "completed": true, "sets": [{ "weight": "20", "reps": "12" }, { "weight": "25", "reps": "10" }, { "weight": "25", "reps": "10" }] },
+        { "id": "inst_4", "exerciseId": "e4", "completed": true, "sets": [{ "weight": "15", "reps": "10" }, { "weight": "20", "reps": "12" }, { "weight": "20", "reps": "10" }] },
+        { "id": "inst_5", "exerciseId": "e5", "completed": true, "sets": [] },
+        { "id": "inst_6", "exerciseId": "e6", "completed": true, "sets": [{ "weight": "0", "reps": "15" }, { "weight": "0", "reps": "20" }, { "weight": "0", "reps": "20" }] },
+        { "id": "inst_7", "exerciseId": "e7", "completed": true, "sets": [] },
+        { "id": "inst_8", "exerciseId": "e8", "completed": true, "sets": [{ "weight": "40", "reps": "10" }, { "weight": "40", "reps": "12" }, { "weight": "40", "reps": "12" }] },
+        { "id": "inst_9", "exerciseId": "e9", "completed": true, "sets": [{ "weight": "10", "reps": "10" }, { "weight": "15", "reps": "12" }, { "weight": "20", "reps": "10" }] },
+        { "id": "inst_10", "exerciseId": "e10", "completed": true, "sets": [{ "weight": "20", "reps": "10" }, { "weight": "15", "reps": "10" }, { "weight": "15", "reps": "10" }] },
+        { "id": "inst_11", "exerciseId": "e11", "completed": true, "sets": [] },
+        { "id": "inst_12", "exerciseId": "e12", "completed": true, "sets": [] },
+        { "id": "inst_13", "exerciseId": "e13", "completed": true, "sets": [{ "weight": "5", "reps": "12" }, { "weight": "5", "reps": "10" }, { "weight": "5", "reps": "10" }] },
+        { "id": "inst_press_01_1", "exerciseId": "lib_press_01", "completed": true, "sets": [{ "weight": "0", "reps": "20" }, { "weight": "0", "reps": "18" }] }
+      ]
+    },
+    {
+      "id": "1776757713666",
+      "date": "2026-04-21",
+      "dayOfWeek": "Вторник",
+      "exercises": [
+        { "id": "inst_1", "exerciseId": "e1", "completed": true, "sets": [{ "weight": "20", "reps": "10" }, { "weight": "25", "reps": "10" }, { "weight": "25", "reps": "10" }] },
+        { "id": "inst_2", "exerciseId": "e2", "completed": true, "sets": [{ "weight": "10", "reps": "12" }, { "weight": "20", "reps": "10" }, { "weight": "15", "reps": "10" }] },
+        { "id": "inst_3", "exerciseId": "e3", "completed": true, "sets": [{ "weight": "20", "reps": "12" }, { "weight": "25", "reps": "10" }, { "weight": "25", "reps": "10" }] },
+        { "id": "inst_4", "exerciseId": "e4", "completed": true, "sets": [{ "weight": "15", "reps": "10" }, { "weight": "20", "reps": "12" }, { "weight": "20", "reps": "10" }] },
+        { "id": "inst_5", "exerciseId": "e5", "completed": true, "sets": [] },
+        { "id": "inst_6", "exerciseId": "e6", "completed": true, "sets": [{ "weight": "0", "reps": "15" }, { "weight": "0", "reps": "20" }, { "weight": "0", "reps": "20" }] },
+        { "id": "inst_7", "exerciseId": "e7", "completed": true, "sets": [] },
+        { "id": "inst_8", "exerciseId": "e8", "completed": true, "sets": [{ "weight": "40", "reps": "10" }, { "weight": "40", "reps": "12" }, { "weight": "40", "reps": "12" }] },
+        { "id": "inst_9", "exerciseId": "e9", "completed": true, "sets": [{ "weight": "10", "reps": "10" }, { "weight": "15", "reps": "12" }, { "weight": "20", "reps": "10" }] },
+        { "id": "inst_10", "exerciseId": "e10", "completed": true, "sets": [{ "weight": "20", "reps": "10" }, { "weight": "15", "reps": "10" }, { "weight": "15", "reps": "10" }] },
+        { "id": "inst_11", "exerciseId": "e11", "completed": true, "sets": [] },
+        { "id": "inst_12", "exerciseId": "e12", "completed": true, "sets": [] },
+        { "id": "inst_13", "exerciseId": "e13", "completed": true, "sets": [{ "weight": "5", "reps": "12" }, { "weight": "5", "reps": "10" }, { "weight": "5", "reps": "10" }] },
+        { "id": "inst_press_01_1", "exerciseId": "lib_press_01", "completed": true, "sets": [{ "weight": "0", "reps": "20" }, { "weight": "0", "reps": "18" }] }
+      ]
+    },
+    {
+      "id": "1776757713666",
+      "date": "2026-04-21",
+      "dayOfWeek": "Вторник",
+      "exercises": [
+        { "id": "inst_14", "exerciseId": "e1", "completed": true, "sets": [{ "weight": "20", "reps": "12" }, { "weight": "25", "reps": "10" }, { "weight": "25", "reps": "10" }] },
+        { "id": "inst_15", "exerciseId": "e2", "completed": true, "sets": [{ "weight": "15", "reps": "12" }, { "weight": "20", "reps": "12" }, { "weight": "25", "reps": "10" }] },
+        { "id": "inst_16", "exerciseId": "e3", "completed": true, "sets": [{ "weight": "20", "reps": "12" }, { "weight": "25", "reps": "10" }, { "weight": "30", "reps": "10" }] },
+        { "id": "inst_17", "exerciseId": "e4", "completed": true, "sets": [{ "weight": "15", "reps": "12" }, { "weight": "20", "reps": "12" }, { "weight": "25", "reps": "12" }] },
+        { "id": "inst_18", "exerciseId": "e5", "completed": true, "sets": [] },
+        { "id": "inst_19", "exerciseId": "e6", "completed": true, "sets": [{ "weight": "0", "reps": "15" }, { "weight": "0", "reps": "20" }, { "weight": "0", "reps": "20" }] },
+        { "id": "inst_20", "exerciseId": "e7", "completed": true, "sets": [] },
+        { "id": "inst_21", "exerciseId": "e8", "completed": true, "sets": [{ "weight": "40", "reps": "12" }, { "weight": "50", "reps": "10" }, { "weight": "50", "reps": "10" }, { "weight": "50", "reps": "12" }] },
+        { "id": "inst_22", "exerciseId": "e9", "completed": true, "sets": [{ "weight": "15", "reps": "12" }, { "weight": "20", "reps": "12" }, { "weight": "20", "reps": "12" }] },
+        { "id": "inst_23", "exerciseId": "e10", "completed": true, "sets": [{ "weight": "15", "reps": "10" }, { "weight": "20", "reps": "10" }, { "weight": "20", "reps": "12" }] },
+        { "id": "inst_24", "exerciseId": "e11", "completed": true, "sets": [] },
+        { "id": "inst_25", "exerciseId": "e12", "completed": true, "sets": [] },
+        { "id": "inst_26", "exerciseId": "e13", "completed": true, "sets": [{ "weight": "7.5", "reps": "10" }, { "weight": "7.5", "reps": "10" }, { "weight": "7.5", "reps": "10" }] },
+        { "id": "inst_press_01_2", "exerciseId": "lib_press_01", "completed": true, "sets": [{ "weight": "0", "reps": "20" }, { "weight": "0", "reps": "18" }] }
+      ]
+    },
+    {
+      "id": "1777195740255",
+      "date": "2026-05-03",
+      "dayOfWeek": "Воскресенье",
+      "exercises": [
+        { "id": "inst_28", "exerciseId": "e2", "completed": true, "sets": [{ "weight": "15", "reps": "12" }, { "weight": "25", "reps": "10" }, { "weight": "25", "reps": "10" }] },
+        { "id": "inst_chest_bench_1", "exerciseId": "lib_chest_bench", "completed": true, "sets": [{ "weight": "10", "reps": "12" }, { "weight": "15", "reps": "10" }, { "weight": "15", "reps": "10" }] },
+        { "id": "inst_30", "exerciseId": "e3", "completed": true, "sets": [{ "weight": "20", "reps": "15" }, { "weight": "30", "reps": "10" }, { "weight": "30", "reps": "10" }] },
+        { "id": "inst_31", "exerciseId": "e4", "completed": true, "sets": [{ "weight": "15", "reps": "15" }, { "weight": "25", "reps": "12" }, { "weight": "25", "reps": "15" }] },
+        { "id": "inst_32", "exerciseId": "e6", "completed": true, "sets": [{ "weight": "0", "reps": "30" }, { "weight": "0", "reps": "30" }, { "weight": "0", "reps": "30" }] },
+        { "id": "inst_33", "exerciseId": "e8", "completed": true, "sets": [{ "weight": "40", "reps": "12" }, { "weight": "50", "reps": "12" }, { "weight": "60", "reps": "12" }] },
+        { "id": "inst_34", "exerciseId": "e9", "completed": true, "sets": [{ "weight": "15", "reps": "15" }, { "weight": "25", "reps": "15" }, { "weight": "30", "reps": "10" }] },
+        { "id": "inst_35", "exerciseId": "e10", "completed": true, "sets": [{ "weight": "15", "reps": "10" }, { "weight": "20", "reps": "10" }, { "weight": "25", "reps": "11" }] },
+        { "id": "inst_36", "exerciseId": "e13", "completed": true, "sets": [{ "weight": "7.5", "reps": "12" }, { "weight": "10", "reps": "10" }, { "weight": "10", "reps": "10" }] },
+        { "id": "inst_press_01_3", "exerciseId": "lib_press_01", "completed": true, "sets": [{ "weight": "0", "reps": "20" }, { "weight": "0", "reps": "20" }] }
+      ]
+    },
+    {
+      "id": "1777969517141",
+      "date": "2026-05-05",
+      "dayOfWeek": "Вторник",
+      "exercises": [
+        { "id": "inst_38", "exerciseId": "e2", "completed": true, "sets": [{ "weight": "15", "reps": "15" }, { "weight": "20", "reps": "12" }, { "weight": "25", "reps": "10" }] },
+        { "id": "inst_chest_bench_2", "exerciseId": "lib_chest_bench", "completed": true, "sets": [{ "weight": "20", "reps": "12" }, { "weight": "25", "reps": "10" }, { "weight": "25", "reps": "12" }] },
+        { "id": "inst_40", "exerciseId": "e3", "completed": true, "sets": [{ "weight": "25", "reps": "12" }, { "weight": "30", "reps": "11" }, { "weight": "35", "reps": "10" }] },
+        { "id": "inst_41", "exerciseId": "e4", "completed": true, "sets": [{ "weight": "15", "reps": "15" }, { "weight": "20", "reps": "12" }, { "weight": "25", "reps": "10" }] },
+        { "id": "inst_42", "exerciseId": "e6", "completed": true, "sets": [{ "weight": "0", "reps": "30" }, { "weight": "0", "reps": "30" }, { "weight": "0", "reps": "30" }] },
+        { "id": "inst_43", "exerciseId": "e8", "completed": true, "sets": [{ "weight": "40", "reps": "15" }, { "weight": "50", "reps": "12" }, { "weight": "60", "reps": "10" }] },
+        { "id": "inst_44", "exerciseId": "e9", "completed": true, "sets": [{ "weight": "15", "reps": "15" }, { "weight": "20", "reps": "15" }, { "weight": "25", "reps": "12" }] },
+        { "id": "inst_45", "exerciseId": "e10", "completed": true, "sets": [{ "weight": "15", "reps": "12" }, { "weight": "20", "reps": "12" }, { "weight": "25", "reps": "10" }] },
+        { "id": "inst_46", "exerciseId": "e13", "completed": true, "sets": [{ "weight": "7.5", "reps": "15" }, { "weight": "10", "reps": "10" }, { "weight": "10", "reps": "8" }] }
+      ]
+    },
+    {
+      "id": "1778404150534",
+      "date": "2026-05-10",
+      "dayOfWeek": "Воскресенье",
+      "exercises": [
+        { "id": "inst_47", "exerciseId": "e2", "completed": true, "sets": [{ "weight": "20", "reps": "12" }, { "weight": "25", "reps": "10" }, { "weight": "30", "reps": "10" }] },
+        { "id": "inst_chest_bench_3", "exerciseId": "lib_chest_bench", "completed": true, "sets": [{ "weight": "20", "reps": "15" }, { "weight": "25", "reps": "12" }, { "weight": "30", "reps": "10" }] },
+        { "id": "inst_49", "exerciseId": "e3", "completed": true, "sets": [{ "weight": "25", "reps": "15" }, { "weight": "30", "reps": "10" }, { "weight": "35", "reps": "10" }] },
+        { "id": "inst_50", "exerciseId": "e4", "completed": true, "sets": [{ "weight": "15", "reps": "15" }, { "weight": "20", "reps": "12" }, { "weight": "25", "reps": "12" }] },
+        { "id": "inst_51", "exerciseId": "e6", "completed": true, "sets": [{ "weight": "0", "reps": "30" }, { "weight": "0", "reps": "30" }, { "weight": "0", "reps": "30" }] },
+        { "id": "inst_52", "exerciseId": "e8", "completed": true, "sets": [{ "weight": "40", "reps": "15" }, { "weight": "50", "reps": "12" }, { "weight": "60", "reps": "10" }] },
+        { "id": "inst_53", "exerciseId": "e9", "completed": true, "sets": [{ "weight": "20", "reps": "15" }, { "weight": "25", "reps": "12" }, { "weight": "30", "reps": "10" }] },
+        { "id": "inst_54", "exerciseId": "e10", "completed": true, "sets": [{ "weight": "15", "reps": "12" }, { "weight": "20", "reps": "12" }, { "weight": "25", "reps": "12" }] },
+        { "id": "inst_55", "exerciseId": "e13", "completed": true, "sets": [{ "weight": "7.5", "reps": "15" }, { "weight": "10", "reps": "10" }, { "weight": "7.5", "reps": "10" }] },
+        { "id": "inst_custom_1_1", "exerciseId": "lib_custom_1", "completed": true, "sets": [{ "weight": "0", "reps": "20" }, { "weight": "0", "reps": "15" }] }
+      ]
+    },
+    {
+      "id": "1778603900714",
+      "date": "2026-05-12",
+      "dayOfWeek": "Вторник",
+      "exercises": [
+        { "id": "inst_57", "exerciseId": "e2", "completed": true, "sets": [{ "weight": "20", "reps": "15" }, { "weight": "25", "reps": "12" }, { "weight": "30", "reps": "10" }] },
+        { "id": "inst_chest_bench_4", "exerciseId": "lib_chest_bench", "completed": true, "sets": [{ "weight": "20", "reps": "12" }, { "weight": "25", "reps": "10" }, { "weight": "30", "reps": "10" }] },
+        { "id": "inst_59", "exerciseId": "e3", "completed": true, "sets": [{ "weight": "25", "reps": "15" }, { "weight": "30", "reps": "12" }, { "weight": "35", "reps": "10" }] },
+        { "id": "inst_60", "exerciseId": "e4", "completed": true, "sets": [{ "weight": "20", "reps": "15" }, { "weight": "25", "reps": "12" }, { "weight": "30", "reps": "12" }] },
+        { "id": "inst_61", "exerciseId": "e6", "completed": true, "sets": [{ "weight": "0", "reps": "20" }, { "weight": "0", "reps": "30" }, { "weight": "0", "reps": "30" }] },
+        { "id": "inst_62", "exerciseId": "e8", "completed": true, "sets": [{ "weight": "40", "reps": "15" }, { "weight": "50", "reps": "10" }, { "weight": "60", "reps": "10" }] },
+        { "id": "inst_63", "exerciseId": "e9", "completed": true, "sets": [{ "weight": "15", "reps": "15" }, { "weight": "25", "reps": "10" }, { "weight": "30", "reps": "12" }] },
+        { "id": "inst_64", "exerciseId": "e10", "completed": true, "sets": [{ "weight": "15", "reps": "15" }, { "weight": "20", "reps": "10" }, { "weight": "30", "reps": "10" }] },
+        { "id": "inst_65", "exerciseId": "e13", "completed": true, "sets": [{ "weight": "7.5", "reps": "12" }, { "weight": "10", "reps": "10" }, { "weight": "7.5", "reps": "10" }] },
+        { "id": "inst_custom_1_2", "exerciseId": "lib_custom_1", "completed": true, "sets": [{ "weight": "0", "reps": "20" }, { "weight": "0", "reps": "20" }] }
+      ]
+    },
+    {
+      "id": "1779015244698",
+      "date": "2026-05-17",
+      "dayOfWeek": "Воскресенье",
+      "exercises": [
+        { "id": "inst_67", "exerciseId": "e2", "completed": true, "sets": [{ "weight": "20", "reps": "12" }, { "weight": "25", "reps": "12" }, { "weight": "30", "reps": "10" }] },
+        { "id": "inst_chest_bench_5", "exerciseId": "lib_chest_bench", "completed": true, "sets": [{ "weight": "20", "reps": "10" }, { "weight": "30", "reps": "10" }, { "weight": "35", "reps": "10" }] },
+        { "id": "inst_69", "exerciseId": "e3", "completed": true, "sets": [{ "weight": "25", "reps": "12" }, { "weight": "30", "reps": "10" }, { "weight": "35", "reps": "10" }] },
+        { "id": "inst_70", "exerciseId": "e4", "completed": true, "sets": [{ "weight": "20", "reps": "15" }, { "weight": "25", "reps": "10" }, { "weight": "30", "reps": "10" }] },
+        { "id": "inst_71", "exerciseId": "e6", "completed": true, "sets": [{ "weight": "0", "reps": "30" }, { "weight": "0", "reps": "30" }, { "weight": "0", "reps": "30" }] },
+        { "id": "inst_72", "exerciseId": "e8", "completed": true, "sets": [{ "weight": "40", "reps": "15" }, { "weight": "60", "reps": "10" }, { "weight": "70", "reps": "10" }] },
+        { "id": "inst_73", "exerciseId": "e9", "completed": true, "sets": [{ "weight": "20", "reps": "12" }, { "weight": "25", "reps": "12" }, { "weight": "30", "reps": "10" }] },
+        { "id": "inst_74", "exerciseId": "e10", "completed": true, "sets": [{ "weight": "20", "reps": "12" }, { "weight": "25", "reps": "10" }, { "weight": "30", "reps": "10" }] },
+        { "id": "inst_75", "exerciseId": "e13", "completed": true, "sets": [{ "weight": "7.5", "reps": "12" }, { "weight": "7.5", "reps": "10" }, { "weight": "7.5", "reps": "10" }] },
+        { "id": "inst_custom_2_1", "exerciseId": "lib_custom_2", "completed": true, "sets": [{ "weight": "0", "reps": "1" }] }
+      ]
+    },
+    {
+      "id": "1779209466621",
+      "date": "2026-05-19",
+      "dayOfWeek": "Вторник",
+      "exercises": [
+        { "id": "inst_e2_1", "exerciseId": "e2", "completed": true, "sets": [{ "weight": "20", "reps": "15" }, { "weight": "25", "reps": "10" }, { "weight": "30", "reps": "10" }] },
+        { "id": "inst_chest_bench_6", "exerciseId": "lib_chest_bench", "completed": true, "sets": [{ "weight": "20", "reps": "12" }, { "weight": "30", "reps": "10" }, { "weight": "35", "reps": "10" }] },
+        { "id": "inst_e3_1", "exerciseId": "e3", "completed": true, "sets": [{ "weight": "20", "reps": "15" }, { "weight": "30", "reps": "10" }, { "weight": "35", "reps": "10" }] },
+        { "id": "inst_e4_1", "exerciseId": "e4", "completed": true, "sets": [{ "weight": "20", "reps": "12" }, { "weight": "25", "reps": "12" }, { "weight": "30", "reps": "12" }] },
+        { "id": "inst_e6_1", "exerciseId": "e6", "completed": true, "sets": [{ "weight": "0", "reps": "30" }, { "weight": "0", "reps": "30" }, { "weight": "0", "reps": "30" }] },
+        { "id": "inst_e8_1", "exerciseId": "e8", "completed": true, "sets": [{ "weight": "40", "reps": "15" }, { "weight": "60", "reps": "10" }, { "weight": "70", "reps": "10" }] },
+        { "id": "inst_e9_1", "exerciseId": "e9", "completed": true, "sets": [{ "weight": "25", "reps": "10" }, { "weight": "30", "reps": "10" }, { "weight": "35", "reps": "10" }] },
+        { "id": "inst_e10_1", "exerciseId": "e10", "completed": true, "sets": [{ "weight": "20", "reps": "12" }, { "weight": "25", "reps": "10" }, { "weight": "30", "reps": "10" }] },
+        { "id": "inst_e13_1", "exerciseId": "e13", "completed": true, "sets": [{ "weight": "7.5", "reps": "10" }, { "weight": "7.5", "reps": "10" }, { "weight": "7.5", "reps": "10" }] },
+        { "id": "inst_e17_1", "exerciseId": "e17", "completed": true, "sets": [{ "weight": "0", "reps": "6" }] },
+        { "id": "inst_custom_1_3", "exerciseId": "lib_custom_1", "completed": true, "sets": [{ "weight": "0", "reps": "20" }, { "weight": "0", "reps": "20" }] }
+      ]
+    }
+  ],
+  "activeWorkoutId": "1779209466621",
+  "categories": [
+    {
+      "id": "c1",
+      "name": "Грудь"
+    },
+    {
+      "id": "c2",
+      "name": "Спина"
+    },
+    {
+      "id": "c3",
+      "name": "Ноги"
+    },
+    {
+      "id": "c4",
+      "name": "Руки (Опц.)"
+    },
+    {
+      "id": "c5",
+      "name": "Плечи"
+    },
+    {
+      "id": "c6",
+      "name": "Пресс"
+    },
+    {
+      "id": "c7",
+      "name": "Дополнительно"
+    }
+  ],
+  "exercises": [
+    {
+      "id": "e1",
+      "categoryId": "c1",
+      "name": "Жим в тренажере сидя / жим гантелей",
+      "target": "3 x 8–12 повт."
+    },
+    {
+      "id": "e2",
+      "categoryId": "c1",
+      "name": "Сведение рук («бабочка»)",
+      "target": "3 x 10–15 повт."
+    },
+    {
+      "id": "e3",
+      "categoryId": "c2",
+      "name": "Тяга верхнего блока к груди",
+      "target": "3 x 8–12 повт."
+    },
+    {
+      "id": "e4",
+      "categoryId": "c2",
+      "name": "Тяга горизонтального блока сидя",
+      "target": "3 x 10–12 повт."
+    },
+    {
+      "id": "e5",
+      "categoryId": "c2",
+      "name": "Пуловер в тренажере/на блоке",
+      "target": "2–3 x 12–15 повт."
+    },
+    {
+      "id": "e6",
+      "categoryId": "c2",
+      "name": "Гиперэкстензия",
+      "target": "3 x 12–20 повт."
+    },
+    {
+      "id": "e7",
+      "categoryId": "c2",
+      "name": "Тяга гантели в наклоне (Опц.)",
+      "target": "2–3 x 10–12 повт."
+    },
+    {
+      "id": "e8",
+      "categoryId": "c3",
+      "name": "Жим ногами в тренажере",
+      "target": "4 x 10–12 повт."
+    },
+    {
+      "id": "e9",
+      "categoryId": "c3",
+      "name": "Сгибание ног в тренажере",
+      "target": "3 x 10–15 повт."
+    },
+    {
+      "id": "e10",
+      "categoryId": "c3",
+      "name": "Разгибание ног в тренажере",
+      "target": "2–3 x 12–15 повт."
+    },
+    {
+      "id": "e11",
+      "categoryId": "c3",
+      "name": "Ягодичный мост (Опц.)",
+      "target": "По самочувствию"
+    },
+    {
+      "id": "e12",
+      "categoryId": "c4",
+      "name": "Сгибание рук на бицепс",
+      "target": "2–3 x 10–12 повт."
+    },
+    {
+      "id": "e13",
+      "categoryId": "c4",
+      "name": "Разгибание рук на трицепс",
+      "target": "2–3 x 10–12 повт."
+    },
+    {
+      "id": "e14",
+      "categoryId": "c5",
+      "name": "Жим гантелей сидя",
+      "target": "3 x 10-12 повт."
+    },
+    {
+      "id": "e15",
+      "categoryId": "c5",
+      "name": "Разведение гантелей в стороны",
+      "target": "3 x 12-15 повт."
+    },
+    {
+      "id": "e16",
+      "categoryId": "c6",
+      "name": "Скручивания",
+      "target": "3 x 15-20 повт."
+    },
+    {
+      "id": "e17",
+      "categoryId": "c7",
+      "name": "Разминка",
+      "target": "5-10 мин"
+    },
+    {
+      "id": "lib_press_01",
+      "categoryId": "c6",
+      "name": "Подъем ног на пресс",
+      "target": "2 х 20 повторений"
+    },
+    {
+      "id": "lib_chest_bench",
+      "categoryId": "c1",
+      "name": "Жим лёжа",
+      "target": "3 х 10"
+    },
+    {
+      "id": "lib_custom_1",
+      "categoryId": "c7",
+      "name": "Подъем ног",
+      "target": "2 х 20"
+    },
+    {
+      "id": "lib_custom_2",
+      "categoryId": "c7",
+      "name": "Беговая дорожка",
+      "target": "1"
+    }
+  ],
+  "templates": [
+    {
+      "id": "tpl_fullbody",
+      "name": "FullBody (Стандарт)",
+      "exercises": [
+        "e17",
+        "e2",
+        "e3",
+        "e4",
+        "e6",
+        "e8",
+        "e9",
+        "e10",
+        "e13",
+        "lib_chest_bench",
+        "lib_custom_1"
+      ]
+    }
+  ]
+}

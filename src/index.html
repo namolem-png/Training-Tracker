@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Дневник тренировок</title>
+    
+    <!-- Базовые PWA теги для iOS -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#2c3e50">
+
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="navbar" id="main-navbar">
+    <div class="navbar-title-wrapper">
+        <h1 class="page-title" id="page-title">Тренировка</h1>
+        <div id="estimated-time-container" class="estimated-time">⏱️ 00:00</div>
+    </div>
+    <button class="hamburger-btn" id="btn-hamburger">☰</button>
+</div>
+
+<div class="menu-overlay" id="menu-overlay"></div>
+<div class="side-menu" id="side-menu">
+    <button class="nav-btn active" data-tab="workout">Тренировка</button>
+    <button class="nav-btn" data-tab="history">История</button>
+    <button class="nav-btn" data-tab="statistics">Статистика</button>
+    <button class="nav-btn" data-tab="settings">Настройки</button>
+</div>
+
+<div class="container">
+    <!-- Вкладка ТРЕНИРОВКА -->
+    <div id="tab-workout" class="tab-content active">
+        <div class="header">
+            <div class="header-nav">
+                <button id="btn-prev-workout" class="nav-arrow" title="Предыдущая тренировка">◀</button>
+                <h2 class="m-0" id="workout-plan-title">План</h2>
+                <button id="btn-next-workout" class="nav-arrow" title="Следующая тренировка">▶</button>
+            </div>
+            <div class="header-inputs">
+                <input type="text" id="dayOfWeek" placeholder="День недели">
+                <input type="date" id="dateInput">
+            </div>
+        </div>
+
+        <div id="workout-list"></div>
+
+        <div id="add-ex-form-container" class="add-ex-container d-none">
+            <h3 class="mt-0 mb-15">Новое упражнение</h3>
+            <div id="library-select-wrapper">
+                <label class="stat-label-small">Выбрать из списка или ввести новое:</label>
+                <select id="exerciseLibrarySelect" class="mb-15"></select>
+            </div>
+            <input type="text" id="newExName" placeholder="Название (например, Отжимания)">
+            <select id="newExCat"></select>
+            <input type="text" id="newExTarget" placeholder="Цель (например, 3 x 10 повт.)">
+            
+            <div class="d-flex gap-10">
+                <button id="btn-save-new-ex" class="btn-confirm">Добавить</button>
+                <button id="btn-cancel-new-ex" class="btn-cancel">Отмена</button>
+            </div>
+        </div>
+
+        <button id="btn-show-add-ex" class="action-btn btn-add-ex">+ Добавить упражнение</button>
+    </div>
+
+    <!-- Вкладка ИСТОРИЯ -->
+    <div id="tab-history" class="tab-content">
+        <div id="new-workout-selector">
+            <button id="btn-show-templates" class="action-btn btn-new-workout">+ Начать новую тренировку</button>
+        </div>
+        
+        <div id="template-selection-container" class="add-ex-container border-primary d-none">
+            <h3 class="mt-0 mb-15">Выберите шаблон</h3>
+            <div id="template-options-ui"></div>
+            <div class="d-flex gap-10 mt-15">
+                <button id="btn-confirm-template" class="btn-confirm">Начать</button>
+                <button id="btn-cancel-template" class="btn-cancel">Отмена</button>
+            </div>
+        </div>
+
+        <div id="calendar-container" class="mt-30"></div>
+    </div>
+
+    <!-- Вкладка СТАТИСТИКА -->
+    <div id="tab-statistics" class="tab-content">
+        <header class="header stat-section-header">
+            <h2 class="m-0">Общая статистика</h2>
+        </header>
+
+        <div id="streak-plaque-container"></div>
+
+        <section class="stat-summary-grid">
+            <div class="stat-summary-card">
+                <div class="stat-label-small">Тренировок</div>
+                <div id="stat-total-workouts" class="stat-value-large">0</div>
+            </div>
+            <div class="stat-summary-card">
+                <div class="stat-label-small">Упражнений</div>
+                <div id="stat-total-exercises" class="stat-value-large">0</div>
+            </div>
+            <div class="stat-summary-card">
+                <div class="stat-label-small">Подходов</div>
+                <div id="stat-total-sets" class="stat-value-large">0</div>
+            </div>
+        </section>
+
+        <div id="statistics-container" class="mt-20">
+            <div class="header text-left">
+                <header class="flex-between-center mb-15">
+                    <h3 class="m-0">Анализ прогресса</h3>
+                </header>
+
+                <div class="stats-controls">
+                    <div class="chart-type-selector">
+                        <button data-metric="max" class="active">Max Вес</button>
+                        <button data-metric="1rm">1RM</button>
+                        <button data-metric="avg">Средний</button>
+                    </div>
+                    <div class="chart-type-selector" id="progress-interval-selector">
+                        <button data-days="7">1 Неделя</button>
+                        <button data-days="30" class="active">1 Месяц</button>
+                        <button data-days="365">1 Год</button>
+                    </div>
+
+                    <select id="progress-stats-exercise-select" class="select-full-width">
+                        <option value="">-- Выберите упражнение --</option>
+                    </select>
+                </div>
+
+                <div class="chart-card">
+                    <div class="flex-between-center mb-10">
+                        <div id="progress-chart-title" class="chart-title-text">Прогресс по упражнению за 1 Месяц</div>
+                        <button id="btn-stats-help" class="chart-help-btn">ⓘ</button>
+                    </div>
+                    <canvas id="progress-stats-chart" class="w-100 h-auto d-block" width="500" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div id="volume-statistics-container" class="mt-20">
+            <div class="header text-left">
+                <header class="flex-between-center mb-15">
+                    <h3 class="m-0">Анализ объема (Тоннаж)</h3>
+                </header>
+
+                <div class="stats-controls">
+                    <div class="chart-type-selector">
+                        <button data-metric="total_tonnage" class="active">Общий</button>
+                        <button data-metric="cat_tonnage">По группам</button>
+                        <button data-metric="exercise_tonnage">По упражнению</button>
+                    </div>
+                    <div class="chart-type-selector" id="volume-interval-selector">
+                        <button data-days="7">1 Неделя</button>
+                        <button data-days="30" class="active">1 Месяц</button>
+                        <button data-days="365">1 Год</button>
+                    </div>
+
+                    <select id="volume-stats-exercise-select" class="select-full-width d-none">
+                        <option value="">-- Выберите упражнение --</option>
+                    </select>
+                </div>
+
+                <div id="volume-legend-container" class="legend-flex-container"></div>
+
+                <div class="chart-card">
+                    <div class="flex-between-center mb-10">
+                        <div id="volume-chart-title" class="chart-title-text">Объем тренировок за 1 Месяц</div>
+                        <button id="btn-volume-stats-help" class="chart-help-btn">ⓘ</button>
+                    </div>
+                    <canvas id="volume-stats-chart" class="w-100 h-auto d-block" width="500" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div id="balance-statistics-container">
+            <div class="header text-left mt-20">
+                <header class="flex-between-center mb-15">
+                    <h3 class="m-0">Баланс мышечных групп</h3>
+                </header>
+
+                <div class="chart-type-selector mb-15" id="balance-interval-selector">
+                    <button data-days="7">1 Неделя</button>
+                    <button data-days="30" class="active">1 Месяц</button>
+                    <button data-days="365">1 Год</button>
+                </div>
+
+                <div class="balance-layout-grid">
+                    <div class="chart-card mt-0">
+                        <div class="flex-between-center mb-10">
+                            <div id="balance-chart-title" class="chart-title-text">Нагрузка за 30 дней (подходы)</div>
+                            <button id="btn-balance-pie-help" class="chart-help-btn">ⓘ</button>
+                        </div>
+                        <canvas id="balance-stats-chart" class="w-100 h-auto d-block"></canvas>
+                    </div>
+
+                    <div class="weekly-widget-card">
+                        <div class="flex-between-center mb-15">
+                            <div class="fw-bold fs-14">Объем за 7 дней</div>
+                            <button id="btn-balance-weekly-help" class="chart-help-btn">ⓘ</button>
+                        </div>
+                        <div id="weekly-volume-widget"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Вкладка НАСТРОЙКИ -->
+    <div id="tab-settings" class="tab-content">
+        <div id="settings-accordion">
+            <h3 class="collapsible-header" data-section="templates">Шаблоны тренировок</h3>
+            <div class="collapsible-body">
+                <div id="templates-list" class="mb-20"></div>
+                <button id="btn-open-template-editor" class="action-btn" style="background-color: var(--secondary);">+ Создать шаблон</button>
+
+                <div id="template-editor" class="add-ex-container border-primary d-none">
+                    <h3 id="template-editor-title">Создание шаблона</h3>
+                    <input type="hidden" id="edit-template-id">
+                    <input type="text" id="template-name" placeholder="Название шаблона (например, День ног)">
+                    
+                    <div id="template-exercises-list" class="mb-15"></div>
+                    
+                    <div id="template-step-container" class="d-none tpl-step-box">
+                        <p id="step-instruction" class="step-instr-text"></p>
+                        <div id="step-options" class="d-flex flex-wrap gap-5"></div>
+                        <button id="btn-cancel-template-step" class="btn-tpl-cancel-step">Отмена</button>
+                    </div>
+
+                    <button id="btn-add-ex-to-template" class="btn-add-tpl-ex mb-15">+ Добавить упражнение в шаблон</button>
+
+                    <div class="d-flex gap-10">
+                        <button id="btn-save-template" class="btn-confirm">Сохранить шаблон</button>
+                        <button id="btn-close-template-editor" class="btn-cancel">Закрыть</button>
+                    </div>
+                </div>
+            </div>
+
+            <h3 class="collapsible-header" data-section="library">Библиотека упражнений</h3>
+            <div class="collapsible-body">
+                <div id="library-list" class="mb-20"></div>
+                <button id="btn-show-add-lib-ex" class="action-btn btn-add-ex">+ Добавить упражнение в библиотеку</button>
+            </div>
+
+            <h3 class="collapsible-header" data-section="categories">Категории</h3>
+            <div class="collapsible-body">
+                <div id="category-list"></div>
+                <div class="d-flex gap-10 mt-10">
+                    <input type="text" id="newCategoryName" placeholder="Новая категория" class="flex-1 p-10 border-standard br-5">
+                    <button id="btn-add-category" class="btn-confirm p-10-15 fw-bold">+</button>
+                </div>
+            </div>
+        </div>
+
+        <button id="btn-export-data" class="action-btn btn-export">💾 Экспорт данных (JSON)</button>
+        <input type="file" id="fileInput" accept=".json" class="d-none">
+        <button id="btn-import-data" class="action-btn btn-import">📂 Импорт данных (JSON)</button>
+    </div>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
