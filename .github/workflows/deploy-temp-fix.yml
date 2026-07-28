@@ -1,8 +1,8 @@
-# Simple workflow for deploying static content to GitHub Pages
-name: Build main and deploy to Pages
+# Simple workflow for deploying static content from temp-fix branch to GitHub Pages
+name: Deploy temp-fix to Pages
 
 on:
-  # Runs on pushes targeting the default branch
+  # Runs on pushes targeting main
   push:
     branches: ["main"]
 
@@ -18,7 +18,7 @@ permissions:
 # Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
 # However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
 concurrency:
-  group: "pages"
+  group: "pages-temp-fix"
   cancel-in-progress: false
 
 jobs:
@@ -29,8 +29,10 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout temp-fix branch
         uses: actions/checkout@v4
+        with:
+          ref: 'temp-fix'
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -42,7 +44,6 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          # Upload dist directory containing built index.html
           path: './dist'
       - name: Deploy to GitHub Pages
         id: deployment

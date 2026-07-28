@@ -15,37 +15,71 @@ export class GymDatabase {
 
     init() {
         return new Promise((resolve, reject) => {
-            const request = indexedDB.open(this.dbName, this.dbVersion);
+            if (typeof indexedDB === 'undefined') {
+                return reject(new Error('IndexedDB не поддерживается в данном браузере'));
+            }
 
-            request.onupgradeneeded = (event) => {
-                const db = event.target.result;
-                const tx = event.target.transaction;
-                
-                let workoutStore;
-                if (!db.objectStoreNames.contains(STORE.WORKOUTS)) {
-                    workoutStore = db.createObjectStore(STORE.WORKOUTS, { keyPath: 'id' });
-                } else {
-                    workoutStore = tx.objectStore(STORE.WORKOUTS);
-                }
-                
-                // Создаем индекс для выборки по дате
-                if (!workoutStore.indexNames.contains('date')) {
-                    workoutStore.createIndex('date', 'date', { unique: false });
+            const openDatabase = (version) => {
+                let request;
+                try {
+                    request = version ? indexedDB.open(this.dbName, version) : indexedDB.open(this.dbName);
+                } catch (e) {
+                    console.error('Исключение при вызове indexedDB.open:', e);
+                    return reject(e);
                 }
 
-                if (!db.objectStoreNames.contains(STORE.EXERCISES)) db.createObjectStore(STORE.EXERCISES, { keyPath: 'id' });
-                if (!db.objectStoreNames.contains(STORE.CATEGORIES)) db.createObjectStore(STORE.CATEGORIES, { keyPath: 'id' });
-                if (!db.objectStoreNames.contains(STORE.TEMPLATES)) db.createObjectStore(STORE.TEMPLATES, { keyPath: 'id' });
-                if (!db.objectStoreNames.contains(STORE.SETTINGS)) db.createObjectStore(STORE.SETTINGS, { keyPath: 'id' });
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    const tx = event.target.transaction;
+                    
+                    let workoutStore;
+                    if (!db.objectStoreNames.contains(STORE.WORKOUTS)) {
+                        workoutStore = db.createObjectStore(STORE.WORKOUTS, { keyPath: 'id' });
+                    } else {
+                        workoutStore = tx.objectStore(STORE.WORKOUTS);
+                    }
+                    
+                    // Создаем индекс для выборки по дате
+                    if (!workoutStore.indexNames.contains('date')) {
+                        workoutStore.createIndex('date', 'date', { unique: false });
+                    }
+
+                    if (!db.objectStoreNames.contains(STORE.EXERCISES)) db.createObjectStore(STORE.EXERCISES, { keyPath: 'id' });
+                    if (!db.objectStoreNames.contains(STORE.CATEGORIES)) db.createObjectStore(STORE.CATEGORIES, { keyPath: 'id' });
+                    if (!db.objectStoreNames.contains(STORE.TEMPLATES)) db.createObjectStore(STORE.TEMPLATES, { keyPath: 'id' });
+                    if (!db.objectStoreNames.contains(STORE.SETTINGS)) db.createObjectStore(STORE.SETTINGS, { keyPath: 'id' });
+                };
+
+                request.onsuccess = async (event) => {
+                    this.db = event.target.result;
+                    this.db.onversionchange = () => {
+                        if (this.db) this.db.close();
+                    };
+                    try {
+                        await this.handleMigration();
+                    } catch (e) {
+                        console.error('Ошибка миграции:', e);
+                    }
+                    resolve();
+                };
+
+                request.onblocked = () => {
+                    console.warn('Инициализация IndexedDB заблокирована другой открытой вкладкой.');
+                };
+
+                request.onerror = (event) => {
+                    const err = request.error || (event.target && event.target.error);
+                    if (version && err && err.name === 'VersionError') {
+                        console.warn('Существующая версия IndexedDB выше запрошенной. Повторная попытка без указания версии.');
+                        openDatabase(null);
+                        return;
+                    }
+                    console.error('Ошибка инициализации IndexedDB:', err);
+                    reject(err || new Error('Ошибка инициализации IndexedDB'));
+                };
             };
 
-            request.onsuccess = async (event) => {
-                this.db = event.target.result;
-                await this.handleMigration();
-                resolve();
-            };
-
-            request.onerror = () => reject('Ошибка инициализации IndexedDB');
+            openDatabase(this.dbVersion);
         });
     }
 

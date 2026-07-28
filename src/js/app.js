@@ -253,5 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const view = new AppView();
     const controller = new AppController(model, view);
     window.app = controller;
-    controller.init();
+    controller.init().catch(err => {
+        console.error('Ошибка инициализации приложения:', err);
+    });
 });

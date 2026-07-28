@@ -88,8 +88,9 @@ function build() {
     const distDir = path.join(__dirname, 'dist');
     if (!fs.existsSync(distDir)) fs.mkdirSync(distDir);
     fs.writeFileSync(path.join(distDir, 'index.html'), html);
+    fs.writeFileSync(path.join(__dirname, 'index.html'), html);
     
-    console.log('Сборка завершена успешно! Файл: dist/index.html');
+    console.log('Сборка завершена успешно! Файлы: dist/index.html, index.html');
 }
 
 build();
