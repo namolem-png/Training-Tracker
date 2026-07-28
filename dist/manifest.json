@@ -1,0 +1,19 @@
+{
+  "name": "Дневник Тренировок",
+  "short_name": "Тренировки",
+  "description": "Персональный дневник тренировок",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f4f7f6",
+  "theme_color": "#2c3e50",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

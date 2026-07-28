@@ -89,8 +89,17 @@ function build() {
     if (!fs.existsSync(distDir)) fs.mkdirSync(distDir);
     fs.writeFileSync(path.join(distDir, 'index.html'), html);
     fs.writeFileSync(path.join(__dirname, 'index.html'), html);
+
+    // Копируем файлы PWA (manifest.json, sw.js, icon.svg)
+    ['manifest.json', 'sw.js', 'icon.svg'].forEach(file => {
+        const srcFile = path.join(srcDir, file);
+        if (fs.existsSync(srcFile)) {
+            fs.copyFileSync(srcFile, path.join(distDir, file));
+            fs.copyFileSync(srcFile, path.join(__dirname, file));
+        }
+    });
     
-    console.log('Сборка завершена успешно! Файлы: dist/index.html, index.html');
+    console.log('Сборка завершена успешно! Файлы: dist/index.html, index.html, PWA ресурсы');
 }
 
 build();
