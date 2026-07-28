@@ -90,8 +90,8 @@ function build() {
     fs.writeFileSync(path.join(distDir, 'index.html'), html);
     fs.writeFileSync(path.join(__dirname, 'index.html'), html);
 
-    // Копируем файлы PWA (manifest.json, sw.js, icon.svg)
-    ['manifest.json', 'sw.js', 'icon.svg'].forEach(file => {
+    // Копируем файлы PWA (manifest.json, sw.js, icon-192.png, icon-512.png)
+    ['manifest.json', 'sw.js', 'icon-192.png', 'icon-512.png'].forEach(file => {
         const srcFile = path.join(srcDir, file);
         if (fs.existsSync(srcFile)) {
             fs.copyFileSync(srcFile, path.join(distDir, file));
