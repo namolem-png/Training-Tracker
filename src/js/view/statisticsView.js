@@ -306,40 +306,47 @@ export class StatisticsView {
         this.currentProgressInterval = 30; // Default to 1 month
         this.currentVolumeInterval = 30;   // Default to 1 month
         this.currentBalanceInterval = 30;
+        this.model = null;
         this.statsService = null;
     }
 
 
     async render(model, statsService) {
         if (!this.totalWorkoutsEl) return;
-        this.statsService = statsService;
+        if (model) this.model = model;
+        if (statsService) this.statsService = statsService;
+        const currentModel = model || this.model;
+        const currentStats = statsService || this.statsService;
+        if (!currentStats) return;
         
         // Загружаем общую статистику (счетчики)
-        const { totalWorkouts, totalExercises, totalSets } = await statsService.getGeneralStats();
+        const { totalWorkouts, totalExercises, totalSets } = await currentStats.getGeneralStats();
 
         this.totalWorkoutsEl.textContent = totalWorkouts;
         this.totalExercisesEl.textContent = totalExercises;
         this.totalSetsEl.textContent = totalSets;
-        await this.renderStreakPlaque(model, statsService);
+        await this.renderStreakPlaque(currentModel, currentStats);
 
         if (!this.progressChart) {
             this.progressChart = new NativeLineChart('progress-stats-chart');
-            this.progressChart.resize();
         }
+        this.progressChart.resize();
+
         if (!this.volumeChart) {
             this.volumeChart = new NativeLineChart('volume-stats-chart'); // Передаем ID canvas
-            this.volumeChart.resize();
         }
+        this.volumeChart.resize();
+
         if (!this.balanceChart) {
             this.balanceChart = new NativePieChart('balance-stats-chart');
-            this.balanceChart.resize();
         }
+        this.balanceChart.resize();
 
-        await this.populateExerciseSelects(model, statsService);
-        await this.updateProgressChart(model, statsService);
-        await this.updateVolumeChart(model, statsService);
-        await this.updateBalanceChart(model, statsService);
-        await this.updateWeeklyWidget(model, statsService);
+        await this.populateExerciseSelects(currentModel, currentStats);
+        await this.updateProgressChart(currentModel, currentStats);
+        await this.updateVolumeChart(currentModel, currentStats);
+        await this.updateBalanceChart(currentModel, currentStats);
+        await this.updateWeeklyWidget(currentModel, currentStats);
     }
 
     async renderStreakPlaque(model, statsService) {
@@ -404,8 +411,7 @@ export class StatisticsView {
 
         // Добавляем обработчик изменения размера окна для респонсивности Canvas
         window.removeEventListener('resize', this._onResize); // Удаляем предыдущий, если есть
-        this._onResize = () => this.render(model);
-        this._onResize = debounce(() => this.render(model), 250); // Дебаунс на 250 мс
+        this._onResize = debounce(() => this.render(this.model, this.statsService), 250); // Дебаунс на 250 мс
         window.addEventListener('resize', this._onResize);
     }
 

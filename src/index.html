@@ -6,7 +6,14 @@
     <title>Дневник тренировок</title>
     
     <!-- PWA -->
-    <link rel="manifest" href="manifest.json">
+    <script>
+        if (window.location.protocol === 'http:' || window.location.protocol === 'https:') {
+            const manifestLink = document.createElement('link');
+            manifestLink.rel = 'manifest';
+            manifestLink.href = 'manifest.json';
+            document.head.appendChild(manifestLink);
+        }
+    </script>
     <link rel="icon" type="image/png" sizes="32x32" href="favicon.png">
     <link rel="icon" href="favicon.ico">
     <link rel="apple-touch-icon" href="icon-192.png">

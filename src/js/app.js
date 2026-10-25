@@ -102,7 +102,7 @@ export class AppController {
             await this.model.deleteExerciseFromWorkout(exIdx);
             this.view.workoutView.render(this.model);
             this.view.updateProgress(this.model);
-            await this.view.statisticsView.render(this.model);
+            await this.view.statisticsView.render(this.model, this.statsService);
         }
     }
 
