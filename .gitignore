@@ -9,3 +9,6 @@ gym_history_*.json
 # Logs & temporary files
 *.log
 .temp/
+
+# Build output
+dist/
