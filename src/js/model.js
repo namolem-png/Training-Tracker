@@ -130,6 +130,10 @@ export class AppModel {
                 workout.exercises = flat;
             }
             workout.exercises = this.reorderExercisesByCategory(workout.exercises);
+            if (workout.templateName !== undefined) {
+                delete workout.templateName;
+                await this.db.save(STORE.WORKOUTS, workout);
+            }
             
             this.activeWorkout = workout;
             this.activeWorkoutId = String(id);
@@ -485,6 +489,7 @@ export class AppModel {
         }
 
         // 2. Import templates
+        const templateIdMap = new Map();
         if (Array.isArray(selectedTemplateIndices) && selectedTemplateIndices.length > 0 && payload.hasTemplates) {
             for (const idx of selectedTemplateIndices) {
                 const tpl = payload.templates[idx];
@@ -560,6 +565,9 @@ export class AppModel {
                 this.templates.push(newTpl);
                 await this.db.save(STORE.TEMPLATES, newTpl);
                 importedTemplatesCount++;
+                if (tpl.id) {
+                    templateIdMap.set(tpl.id, newTpl.id);
+                }
             }
         }
 
@@ -571,8 +579,40 @@ export class AppModel {
                 if (existing) {
                     workoutToSave.id = String(Date.now() + Math.random().toString(36).substr(2, 6));
                 }
+
+                let targetTemplateId = null;
+                if (w.templateId && templateIdMap.has(w.templateId)) {
+                    targetTemplateId = templateIdMap.get(w.templateId);
+                } else if (w.templateId && this.templates.some(t => t.id === w.templateId)) {
+                    targetTemplateId = w.templateId;
+                } else {
+                    const payloadTpl = Array.isArray(payload.templates) ? payload.templates.find(t => t && t.id === w.templateId) : null;
+                    if (payloadTpl && payloadTpl.name) {
+                        const matchedByName = this.templates.find(t => t.name.toLowerCase() === payloadTpl.name.toLowerCase());
+                        if (matchedByName) targetTemplateId = matchedByName.id;
+                    }
+                }
+
+                workoutToSave.templateId = targetTemplateId || w.templateId || null;
+                delete workoutToSave.templateName;
+
                 await this.db.save(STORE.WORKOUTS, workoutToSave);
                 importedWorkoutsCount++;
+            }
+
+            if (payload.activeWorkoutId) {
+                const activeExists = await this.db.get(STORE.WORKOUTS, String(payload.activeWorkoutId));
+                if (activeExists) {
+                    await this.loadActiveWorkout(payload.activeWorkoutId);
+                }
+            }
+            if (!this.activeWorkout) {
+                const recent = await this.getWorkoutsByPage(1, 0);
+                if (recent.length > 0) {
+                    await this.loadActiveWorkout(recent[0].id);
+                }
+            } else {
+                await this.loadActiveWorkout(this.activeWorkoutId);
             }
         }
 
