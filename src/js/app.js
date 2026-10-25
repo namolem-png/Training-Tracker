@@ -322,17 +322,12 @@ export class AppController {
     }
 
     getExportSelection() {
-        const list = this.view.els.exportOptionsList;
-        const includeLibrary = Boolean(list.querySelector('#export-check-library')?.checked);
-        const templateIds = Array.from(list.querySelectorAll('.export-check-template:checked')).map(el => el.dataset.tplId);
-        const includeHistory = Boolean(list.querySelector('#export-check-history')?.checked);
-
-        if (!includeLibrary && templateIds.length === 0 && !includeHistory) {
+        const selection = this.view.importExportModalView.getExportSelection();
+        if (!selection) {
             alert(STRINGS.MESSAGES.ERROR_NO_SELECTION);
             return null;
         }
-
-        return { includeLibrary, templateIds, includeHistory };
+        return selection;
     }
 
     async handleExportCopyAi() {
@@ -440,22 +435,14 @@ export class AppController {
             return;
         }
 
-        const list = this.view.els.importOptionsList;
-        const importLibrary = Boolean(list.querySelector('#import-check-library')?.checked);
-        const selectedTemplateIndices = Array.from(list.querySelectorAll('.import-check-template:checked')).map(el => parseInt(el.dataset.idx, 10));
-        const importHistory = Boolean(list.querySelector('#import-check-history')?.checked);
-
-        if (!importLibrary && selectedTemplateIndices.length === 0 && !importHistory) {
+        const selection = this.view.importExportModalView.getImportSelection();
+        if (!selection) {
             alert(STRINGS.MESSAGES.ERROR_NO_SELECTION);
             return;
         }
 
         try {
-            const summary = await this.model.executeSelectiveImport({
-                importLibrary,
-                selectedTemplateIndices,
-                importHistory
-            }, this.currentParsedImportPayload);
+            const summary = await this.model.executeSelectiveImport(selection, this.currentParsedImportPayload);
 
             let msg = STRINGS.MESSAGES.IMPORT_SUCCESS;
             const details = [];

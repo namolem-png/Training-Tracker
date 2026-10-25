@@ -59,8 +59,6 @@
             </div>
         </div>
 
-
-
         <div id="template-selection-container" class="add-ex-container border-primary d-none">
             <h3 class="mt-0 mb-15">Выберите шаблон</h3>
             <div id="template-options-ui"></div>
@@ -104,15 +102,6 @@
         <div id="new-workout-selector">
             <button id="btn-show-templates" class="action-btn btn-new-workout">+ Начать новую тренировку</button>
         </div>
-        
-
-
-
-
-
-
-
-
 
         <div id="calendar-container" class="mt-30"></div>
     </div>
@@ -827,6 +816,353 @@ function generateAiPrompt(exportData) {
 }
 
 
+/* --- File: js/services/importExportService.js --- */
+
+
+class ImportExportService {
+    constructor(model) {
+        this.model = model;
+    }
+
+    getUniqueTemplateName(baseName) {
+        let name = (baseName || 'Шаблон').trim();
+        if (!this.model.templates.some(t => t.name.toLowerCase() === name.toLowerCase())) {
+            return name;
+        }
+        let counter = 1;
+        let candidate = `${name}(импорт)`;
+        while (this.model.templates.some(t => t.name.toLowerCase() === candidate.toLowerCase())) {
+            counter++;
+            candidate = `${name}(импорт ${counter})`;
+        }
+        return candidate;
+    }
+
+    async buildSelectiveExport({ includeLibrary = false, templateIds = [], includeHistory = false } = {}) {
+        const exportData = {
+            version: 1,
+            exportedAt: new Date().toISOString()
+        };
+
+        if (includeLibrary) {
+            exportData.categories = this.model.categories;
+            exportData.exercises = this.model.exercises;
+        }
+
+        if (Array.isArray(templateIds) && templateIds.length > 0) {
+            exportData.templates = templateIds.map(tid => {
+                const tpl = this.model.templates.find(t => t.id === tid);
+                if (!tpl) return null;
+                return {
+                    id: tpl.id,
+                    name: tpl.name,
+                    exercises: tpl.exercises, // Array of string IDs for 100% compatibility with older versions
+                    exerciseDetails: tpl.exercises.map(exId => {
+                        const lib = this.model.getLibraryExercise(exId);
+                        return {
+                            id: lib.id,
+                            name: lib.name,
+                            category: this.model.getCategoryName(lib.categoryId),
+                            target: lib.target || ''
+                        };
+                    })
+                };
+            }).filter(Boolean);
+        }
+
+        if (includeHistory) {
+            exportData.workouts = await this.model.db.getAll(STORE.WORKOUTS);
+            if (this.model.activeWorkoutId) {
+                exportData.activeWorkoutId = this.model.activeWorkoutId;
+            }
+        }
+
+        return exportData;
+    }
+
+    parseImportPayload(rawInput) {
+        if (!rawInput) throw new Error('Empty payload');
+
+        let parsed = null;
+        if (typeof rawInput === 'object') {
+            parsed = rawInput;
+        } else if (typeof rawInput === 'string') {
+            const trimmed = rawInput.trim();
+            // Check for markdown ```json ... ``` code fence
+            const mdMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+            const textToParse = mdMatch ? mdMatch[1].trim() : trimmed;
+
+            try {
+                parsed = JSON.parse(textToParse);
+            } catch (err) {
+                // Try to find the outermost JSON object {...} or array [...]
+                const firstBrace = textToParse.indexOf('{');
+                const lastBrace = textToParse.lastIndexOf('}');
+                const firstBracket = textToParse.indexOf('[');
+                const lastBracket = textToParse.lastIndexOf(']');
+
+                let candidate = null;
+                if (firstBrace !== -1 && lastBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+                    candidate = textToParse.slice(firstBrace, lastBrace + 1);
+                } else if (firstBracket !== -1 && lastBracket !== -1) {
+                    candidate = textToParse.slice(firstBracket, lastBracket + 1);
+                }
+
+                if (candidate) {
+                    parsed = JSON.parse(candidate);
+                } else {
+                    throw new Error('Invalid JSON format');
+                }
+            }
+        }
+
+        if (!parsed || typeof parsed !== 'object') {
+            throw new Error('Invalid parsed structure');
+        }
+
+        // Normalize root shapes
+        if (Array.isArray(parsed)) {
+            // Could be array of templates or array of workouts
+            if (parsed.length > 0 && parsed[0].exercises) {
+                parsed = { templates: parsed };
+            } else if (parsed.length > 0 && (parsed[0].date || parsed[0].dayOfWeek)) {
+                parsed = { workouts: parsed };
+            } else {
+                parsed = { templates: parsed };
+            }
+        } else if (parsed.template && typeof parsed.template === 'object') {
+            parsed.templates = [parsed.template];
+        } else if (!parsed.templates && parsed.name && Array.isArray(parsed.exercises)) {
+            parsed = { templates: [parsed] };
+        }
+
+        const normalizedTemplates = Array.isArray(parsed.templates) ? parsed.templates.filter(t => t && (t.name || t.exercises)) : [];
+        const normalizedCategories = Array.isArray(parsed.categories) ? parsed.categories : [];
+        const normalizedExercises = Array.isArray(parsed.exercises) ? parsed.exercises : [];
+        const normalizedWorkouts = Array.isArray(parsed.workouts) ? parsed.workouts : [];
+
+        const hasLibrary = normalizedExercises.length > 0 || normalizedCategories.length > 0;
+        const hasTemplates = normalizedTemplates.length > 0;
+        const hasHistory = normalizedWorkouts.length > 0;
+
+        if (!hasLibrary && !hasTemplates && !hasHistory) {
+            throw new Error('No compatible tracker data found');
+        }
+
+        return {
+            hasLibrary,
+            hasTemplates,
+            hasHistory,
+            categories: normalizedCategories,
+            exercises: normalizedExercises,
+            templates: normalizedTemplates,
+            workouts: normalizedWorkouts
+        };
+    }
+
+    async executeSelectiveImport({ importLibrary = false, selectedTemplateIndices = [], importHistory = false } = {}, payload) {
+        let importedCategoriesCount = 0;
+        let importedExercisesCount = 0;
+        let importedTemplatesCount = 0;
+        let importedWorkoutsCount = 0;
+
+        // 1. Import library (categories & exercises)
+        if (importLibrary && payload.hasLibrary) {
+            for (const cat of payload.categories) {
+                if (!cat.name) continue;
+                const existing = this.model.categories.find(c => c.name.toLowerCase() === cat.name.toLowerCase());
+                if (!existing) {
+                    const newCat = { id: cat.id || ('c_' + Date.now() + Math.random().toString(36).substr(2, 4)), name: cat.name };
+                    this.model.categories.push(newCat);
+                    await this.model.db.save(STORE.CATEGORIES, newCat);
+                    importedCategoriesCount++;
+                }
+            }
+
+            for (const ex of payload.exercises) {
+                if (!ex.name) continue;
+                const existing = this.model.exercises.find(e => e.name.toLowerCase() === ex.name.toLowerCase());
+                if (!existing) {
+                    let catId = ex.categoryId;
+                    if (!catId && ex.category) {
+                        const cat = this.model.categories.find(c => c.name.toLowerCase() === ex.category.toLowerCase());
+                        catId = cat ? cat.id : 'c7';
+                    }
+                    const newEx = {
+                        id: ex.id || ('lib_' + Date.now() + Math.random().toString(36).substr(2, 4)),
+                        name: ex.name,
+                        categoryId: catId || 'c7',
+                        target: ex.target || ''
+                    };
+                    this.model.exercises.push(newEx);
+                    await this.model.db.save(STORE.EXERCISES, newEx);
+                    importedExercisesCount++;
+                } else if (ex.target && (!existing.target || existing.target === '-')) {
+                    existing.target = ex.target;
+                    await this.model.db.save(STORE.EXERCISES, existing);
+                }
+            }
+        }
+
+        // 2. Import templates
+        const templateIdMap = new Map();
+        if (Array.isArray(selectedTemplateIndices) && selectedTemplateIndices.length > 0 && payload.hasTemplates) {
+            for (const idx of selectedTemplateIndices) {
+                const tpl = payload.templates[idx];
+                if (!tpl) continue;
+
+                const uniqueName = this.getUniqueTemplateName(tpl.name);
+                const templateExIds = [];
+
+                for (const item of (tpl.exerciseDetails || tpl.exercises || [])) {
+                    if (typeof item === 'string') {
+                        // Check if ID exists
+                        const byId = this.model.exercises.find(e => e.id === item);
+                        if (byId) {
+                            templateExIds.push(byId.id);
+                            continue;
+                        }
+                        // Check if name matches
+                        const byName = this.model.exercises.find(e => e.name.toLowerCase() === item.toLowerCase());
+                        if (byName) {
+                            templateExIds.push(byName.id);
+                            continue;
+                        }
+                        // Create new exercise
+                        const newId = await this.model.addLibraryExercise(item, 'c7', '');
+                        templateExIds.push(newId);
+                        importedExercisesCount++;
+                    } else if (typeof item === 'object' && item !== null) {
+                        const exName = (item.name || '').trim();
+                        if (!exName) continue;
+
+                        let targetCatId = 'c7';
+                        const catName = (item.category || item.categoryName || '').trim();
+                        if (catName) {
+                            let cat = this.model.categories.find(c => c.name.toLowerCase() === catName.toLowerCase());
+                            if (!cat) {
+                                const newCat = { id: 'c_' + Date.now() + Math.random().toString(36).substr(2, 4), name: catName };
+                                this.model.categories.push(newCat);
+                                await this.model.db.save(STORE.CATEGORIES, newCat);
+                                targetCatId = newCat.id;
+                                importedCategoriesCount++;
+                            } else {
+                                targetCatId = cat.id;
+                            }
+                        }
+
+                        let existingEx = this.model.exercises.find(e => e.name.toLowerCase() === exName.toLowerCase());
+                        if (!existingEx) {
+                            const newEx = {
+                                id: 'lib_' + Date.now() + Math.random().toString(36).substr(2, 4),
+                                name: exName,
+                                categoryId: targetCatId,
+                                target: item.target || ''
+                            };
+                            this.model.exercises.push(newEx);
+                            await this.model.db.save(STORE.EXERCISES, newEx);
+                            templateExIds.push(newEx.id);
+                            importedExercisesCount++;
+                        } else {
+                            if (item.target && (!existingEx.target || existingEx.target === '-')) {
+                                existingEx.target = item.target;
+                                await this.model.db.save(STORE.EXERCISES, existingEx);
+                            }
+                            templateExIds.push(existingEx.id);
+                        }
+                    }
+                }
+
+                const newTpl = {
+                    id: 'tpl_' + Date.now() + Math.random().toString(36).substr(2, 4),
+                    name: uniqueName,
+                    exercises: templateExIds
+                };
+                this.model.templates.push(newTpl);
+                await this.model.db.save(STORE.TEMPLATES, newTpl);
+                importedTemplatesCount++;
+                if (tpl.id) {
+                    templateIdMap.set(tpl.id, newTpl.id);
+                }
+            }
+        }
+
+        // 3. Import workout history
+        if (importHistory && payload.hasHistory) {
+            for (const w of payload.workouts) {
+                const existing = await this.model.db.get(STORE.WORKOUTS, String(w.id));
+                const workoutToSave = { ...w };
+                if (existing) {
+                    workoutToSave.id = String(Date.now() + Math.random().toString(36).substr(2, 6));
+                }
+
+                let targetTemplateId = null;
+                if (w.templateId && templateIdMap.has(w.templateId)) {
+                    targetTemplateId = templateIdMap.get(w.templateId);
+                } else if (w.templateId && this.model.templates.some(t => t.id === w.templateId)) {
+                    targetTemplateId = w.templateId;
+                } else {
+                    const payloadTpl = Array.isArray(payload.templates) ? payload.templates.find(t => t && t.id === w.templateId) : null;
+                    if (payloadTpl && payloadTpl.name) {
+                        const matchedByName = this.model.templates.find(t => t.name.toLowerCase() === payloadTpl.name.toLowerCase());
+                        if (matchedByName) targetTemplateId = matchedByName.id;
+                    }
+                }
+
+                workoutToSave.templateId = targetTemplateId || w.templateId || null;
+                delete workoutToSave.templateName;
+
+                await this.model.db.save(STORE.WORKOUTS, workoutToSave);
+                importedWorkoutsCount++;
+            }
+
+            if (payload.activeWorkoutId) {
+                const activeExists = await this.model.db.get(STORE.WORKOUTS, String(payload.activeWorkoutId));
+                if (activeExists) {
+                    await this.model.loadActiveWorkout(payload.activeWorkoutId);
+                }
+            }
+            if (!this.model.activeWorkout) {
+                const recent = await this.model.getWorkoutsByPage(1, 0);
+                if (recent.length > 0) {
+                    await this.model.loadActiveWorkout(recent[0].id);
+                }
+            } else {
+                await this.model.loadActiveWorkout(this.model.activeWorkoutId);
+            }
+        }
+
+        return {
+            importedCategoriesCount,
+            importedExercisesCount,
+            importedTemplatesCount,
+            importedWorkoutsCount
+        };
+    }
+
+    async getExportData() {
+        return {
+            workouts: await this.model.db.getAll(STORE.WORKOUTS),
+            exercises: this.model.exercises,
+            categories: this.model.categories,
+            templates: this.model.templates,
+            activeWorkoutId: this.model.activeWorkoutId
+        };
+    }
+
+    async importData(importedData) {
+        const stores = [STORE.WORKOUTS, STORE.EXERCISES, STORE.CATEGORIES, STORE.TEMPLATES, STORE.SETTINGS];
+        for (const store of stores) await this.model.db.clear(store);
+
+        if (importedData.workouts) for (const w of importedData.workouts) await this.model.db.save(STORE.WORKOUTS, w);
+        if (importedData.exercises) for (const e of importedData.exercises) await this.model.db.save(STORE.EXERCISES, e);
+        if (importedData.categories) for (const c of importedData.categories) await this.model.db.save(STORE.CATEGORIES, c);
+        if (importedData.templates) for (const t of importedData.templates) await this.model.db.save(STORE.TEMPLATES, t);
+        if (importedData.activeWorkoutId) await this.model.db.save(STORE.SETTINGS, { id: 'activeWorkoutId', value: importedData.activeWorkoutId });
+    }
+}
+
+
 /* --- File: js/db.js --- */
 const STORE = {
     WORKOUTS: 'workouts',
@@ -1078,6 +1414,7 @@ class GymDatabase {
 
 
 
+
 class AppModel {
     constructor(db) {
         this.db = db;
@@ -1086,6 +1423,7 @@ class AppModel {
         this.templates = [];
         this.activeWorkoutId = null;
         this.activeWorkout = null; // Текущая тренировка, загруженная в память
+        this.importExportService = new ImportExportService(this);
     }
 
     async init() {
@@ -1253,7 +1591,6 @@ class AppModel {
         if (templateId) {
             const template = this.templates.find(t => t.id === templateId);
             if (template) {
-
                 initialExercises = template.exercises.map(exId => ({
                     id: 'inst_' + Date.now() + Math.random(),
                     exerciseId: exId,
@@ -1263,14 +1600,16 @@ class AppModel {
             }
         }
 
+        const date = customDate || today.toISOString().split('T')[0];
+        const dayOfWeek = customDay || days[today.getDay()];
+
         const newWorkout = {
             id: Date.now().toString(),
-            date: customDate || today.toISOString().split('T')[0],
-            dayOfWeek: customDay || days[today.getDay()],
+            date: date,
+            dayOfWeek: dayOfWeek,
             exercises: this.reorderExercisesByCategory(initialExercises),
             templateId: templateId
-
-                };
+        };
 
         this.activeWorkout = newWorkout;
         await this.saveActiveWorkoutId(newWorkout.id);
@@ -1385,343 +1724,320 @@ class AppModel {
     }
 
     getUniqueTemplateName(baseName) {
-        let name = (baseName || 'Шаблон').trim();
-        if (!this.templates.some(t => t.name.toLowerCase() === name.toLowerCase())) {
-            return name;
-        }
-        let counter = 1;
-        let candidate = `${name}(импорт)`;
-        while (this.templates.some(t => t.name.toLowerCase() === candidate.toLowerCase())) {
-            counter++;
-            candidate = `${name}(импорт ${counter})`;
-        }
-        return candidate;
+        return this.importExportService.getUniqueTemplateName(baseName);
     }
 
-    async buildSelectiveExport({ includeLibrary = false, templateIds = [], includeHistory = false } = {}) {
-        const exportData = {
-            version: 1,
-            exportedAt: new Date().toISOString()
-        };
-
-        if (includeLibrary) {
-            exportData.categories = this.categories;
-            exportData.exercises = this.exercises;
-        }
-
-        if (Array.isArray(templateIds) && templateIds.length > 0) {
-            exportData.templates = templateIds.map(tid => {
-                const tpl = this.templates.find(t => t.id === tid);
-                if (!tpl) return null;
-                return {
-                    id: tpl.id,
-                    name: tpl.name,
-                    exercises: tpl.exercises, // Array of string IDs for 100% compatibility with older versions
-                    exerciseDetails: tpl.exercises.map(exId => {
-                        const lib = this.getLibraryExercise(exId);
-                        return {
-                            id: lib.id,
-                            name: lib.name,
-                            category: this.getCategoryName(lib.categoryId),
-                            target: lib.target || ''
-                        };
-                    })
-                };
-            }).filter(Boolean);
-        }
-
-        if (includeHistory) {
-            exportData.workouts = await this.db.getAll(STORE.WORKOUTS);
-
-            if (this.activeWorkoutId) {
-                exportData.activeWorkoutId = this.activeWorkoutId;
-            }
-        }
-
-        return exportData;
+    async buildSelectiveExport(options) {
+        return await this.importExportService.buildSelectiveExport(options);
     }
 
     parseImportPayload(rawInput) {
-        if (!rawInput) throw new Error('Empty payload');
-
-        let parsed = null;
-        if (typeof rawInput === 'object') {
-            parsed = rawInput;
-        } else if (typeof rawInput === 'string') {
-            const trimmed = rawInput.trim();
-            // Check for markdown ```json ... ``` code fence
-            const mdMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-            const textToParse = mdMatch ? mdMatch[1].trim() : trimmed;
-
-            try {
-                parsed = JSON.parse(textToParse);
-            } catch (err) {
-                // Try to find the outermost JSON object {...} or array [...]
-                const firstBrace = textToParse.indexOf('{');
-                const lastBrace = textToParse.lastIndexOf('}');
-                const firstBracket = textToParse.indexOf('[');
-                const lastBracket = textToParse.lastIndexOf(']');
-
-                let candidate = null;
-                if (firstBrace !== -1 && lastBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
-                    candidate = textToParse.slice(firstBrace, lastBrace + 1);
-                } else if (firstBracket !== -1 && lastBracket !== -1) {
-                    candidate = textToParse.slice(firstBracket, lastBracket + 1);
-                }
-
-                if (candidate) {
-                    parsed = JSON.parse(candidate);
-                } else {
-                    throw new Error('Invalid JSON format');
-                }
-            }
-        }
-
-        if (!parsed || typeof parsed !== 'object') {
-            throw new Error('Invalid parsed structure');
-        }
-
-        // Normalize root shapes
-        if (Array.isArray(parsed)) {
-            // Could be array of templates or array of workouts
-            if (parsed.length > 0 && parsed[0].exercises) {
-                parsed = { templates: parsed };
-            } else if (parsed.length > 0 && (parsed[0].date || parsed[0].dayOfWeek)) {
-                parsed = { workouts: parsed };
-            } else {
-                parsed = { templates: parsed };
-            }
-        } else if (parsed.template && typeof parsed.template === 'object') {
-            parsed.templates = [parsed.template];
-        } else if (!parsed.templates && parsed.name && Array.isArray(parsed.exercises)) {
-            parsed = { templates: [parsed] };
-        }
-
-        const normalizedTemplates = Array.isArray(parsed.templates) ? parsed.templates.filter(t => t && (t.name || t.exercises)) : [];
-        const normalizedCategories = Array.isArray(parsed.categories) ? parsed.categories : [];
-        const normalizedExercises = Array.isArray(parsed.exercises) ? parsed.exercises : [];
-        const normalizedWorkouts = Array.isArray(parsed.workouts) ? parsed.workouts : [];
-
-        const hasLibrary = normalizedExercises.length > 0 || normalizedCategories.length > 0;
-        const hasTemplates = normalizedTemplates.length > 0;
-        const hasHistory = normalizedWorkouts.length > 0;
-
-        if (!hasLibrary && !hasTemplates && !hasHistory) {
-            throw new Error('No compatible tracker data found');
-        }
-
-        return {
-            hasLibrary,
-            hasTemplates,
-            hasHistory,
-            categories: normalizedCategories,
-            exercises: normalizedExercises,
-            templates: normalizedTemplates,
-            workouts: normalizedWorkouts
-        };
+        return this.importExportService.parseImportPayload(rawInput);
     }
 
-    async executeSelectiveImport({ importLibrary = false, selectedTemplateIndices = [], importHistory = false } = {}, payload) {
-        let importedCategoriesCount = 0;
-        let importedExercisesCount = 0;
-        let importedTemplatesCount = 0;
-        let importedWorkoutsCount = 0;
-
-        // 1. Import library (categories & exercises)
-        if (importLibrary && payload.hasLibrary) {
-            for (const cat of payload.categories) {
-                if (!cat.name) continue;
-                const existing = this.categories.find(c => c.name.toLowerCase() === cat.name.toLowerCase());
-                if (!existing) {
-                    const newCat = { id: cat.id || ('c_' + Date.now() + Math.random().toString(36).substr(2, 4)), name: cat.name };
-                    this.categories.push(newCat);
-                    await this.db.save(STORE.CATEGORIES, newCat);
-                    importedCategoriesCount++;
-                }
-            }
-
-            for (const ex of payload.exercises) {
-                if (!ex.name) continue;
-                const existing = this.exercises.find(e => e.name.toLowerCase() === ex.name.toLowerCase());
-                if (!existing) {
-                    let catId = ex.categoryId;
-                    if (!catId && ex.category) {
-                        const cat = this.categories.find(c => c.name.toLowerCase() === ex.category.toLowerCase());
-                        catId = cat ? cat.id : 'c7';
-                    }
-                    const newEx = {
-                        id: ex.id || ('lib_' + Date.now() + Math.random().toString(36).substr(2, 4)),
-                        name: ex.name,
-                        categoryId: catId || 'c7',
-                        target: ex.target || ''
-                    };
-                    this.exercises.push(newEx);
-                    await this.db.save(STORE.EXERCISES, newEx);
-                    importedExercisesCount++;
-                } else if (ex.target && (!existing.target || existing.target === '-')) {
-                    existing.target = ex.target;
-                    await this.db.save(STORE.EXERCISES, existing);
-                }
-            }
-        }
-
-        // 2. Import templates
-        const templateIdMap = new Map();
-        if (Array.isArray(selectedTemplateIndices) && selectedTemplateIndices.length > 0 && payload.hasTemplates) {
-            for (const idx of selectedTemplateIndices) {
-                const tpl = payload.templates[idx];
-                if (!tpl) continue;
-
-                const uniqueName = this.getUniqueTemplateName(tpl.name);
-                const templateExIds = [];
-
-                for (const item of (tpl.exerciseDetails || tpl.exercises || [])) {
-                    if (typeof item === 'string') {
-                        // Check if ID exists
-                        const byId = this.exercises.find(e => e.id === item);
-                        if (byId) {
-                            templateExIds.push(byId.id);
-                            continue;
-                        }
-                        // Check if name matches
-                        const byName = this.exercises.find(e => e.name.toLowerCase() === item.toLowerCase());
-                        if (byName) {
-                            templateExIds.push(byName.id);
-                            continue;
-                        }
-                        // Create new exercise
-                        const newId = await this.addLibraryExercise(item, 'c7', '');
-                        templateExIds.push(newId);
-                        importedExercisesCount++;
-                    } else if (typeof item === 'object' && item !== null) {
-                        const exName = (item.name || '').trim();
-                        if (!exName) continue;
-
-                        let targetCatId = 'c7';
-                        const catName = (item.category || item.categoryName || '').trim();
-                        if (catName) {
-                            let cat = this.categories.find(c => c.name.toLowerCase() === catName.toLowerCase());
-                            if (!cat) {
-                                const newCat = { id: 'c_' + Date.now() + Math.random().toString(36).substr(2, 4), name: catName };
-                                this.categories.push(newCat);
-                                await this.db.save(STORE.CATEGORIES, newCat);
-                                targetCatId = newCat.id;
-                                importedCategoriesCount++;
-                            } else {
-                                targetCatId = cat.id;
-                            }
-                        }
-
-                        let existingEx = this.exercises.find(e => e.name.toLowerCase() === exName.toLowerCase());
-                        if (!existingEx) {
-                            const newEx = {
-                                id: 'lib_' + Date.now() + Math.random().toString(36).substr(2, 4),
-                                name: exName,
-                                categoryId: targetCatId,
-                                target: item.target || ''
-                            };
-                            this.exercises.push(newEx);
-                            await this.db.save(STORE.EXERCISES, newEx);
-                            templateExIds.push(newEx.id);
-                            importedExercisesCount++;
-                        } else {
-                            if (item.target && (!existingEx.target || existingEx.target === '-')) {
-                                existingEx.target = item.target;
-                                await this.db.save(STORE.EXERCISES, existingEx);
-                            }
-                            templateExIds.push(existingEx.id);
-                        }
-                    }
-                }
-
-                const newTpl = {
-                    id: 'tpl_' + Date.now() + Math.random().toString(36).substr(2, 4),
-                    name: uniqueName,
-                    exercises: templateExIds
-                };
-                this.templates.push(newTpl);
-                await this.db.save(STORE.TEMPLATES, newTpl);
-                importedTemplatesCount++;
-                if (tpl.id) {
-                    templateIdMap.set(tpl.id, newTpl.id);
-                }
-            }
-        }
-
-        // 3. Import workout history
-        if (importHistory && payload.hasHistory) {
-            for (const w of payload.workouts) {
-                const existing = await this.db.get(STORE.WORKOUTS, String(w.id));
-                const workoutToSave = { ...w };
-                if (existing) {
-                    workoutToSave.id = String(Date.now() + Math.random().toString(36).substr(2, 6));
-                }
-                let targetTemplateId = null;
-                if (w.templateId && templateIdMap.has(w.templateId)) {
-                    targetTemplateId = templateIdMap.get(w.templateId);
-                } else if (w.templateId && this.templates.some(t => t.id === w.templateId)) {
-                    targetTemplateId = w.templateId;
-                } else {
-                    const payloadTpl = Array.isArray(payload.templates) ? payload.templates.find(t => t && t.id === w.templateId) : null;
-                    if (payloadTpl && payloadTpl.name) {
-                        const matchedByName = this.templates.find(t => t.name.toLowerCase() === payloadTpl.name.toLowerCase());
-                        if (matchedByName) targetTemplateId = matchedByName.id;
-                    }
-                }
-
-                workoutToSave.templateId = targetTemplateId || w.templateId || null;
-                delete workoutToSave.templateName;
-
-                await this.db.save(STORE.WORKOUTS, workoutToSave);
-                importedWorkoutsCount++;
-            }
-            if (payload.activeWorkoutId) {
-                const activeExists = await this.db.get(STORE.WORKOUTS, String(payload.activeWorkoutId));
-                if (activeExists) {
-                    await this.loadActiveWorkout(payload.activeWorkoutId);
-                }
-            }
-            if (!this.activeWorkout) {
-                const recent = await this.getWorkoutsByPage(1, 0);
-                if (recent.length > 0) {
-                    await this.loadActiveWorkout(recent[0].id);
-                }
-            } else {
-                await this.loadActiveWorkout(this.activeWorkoutId);
-            }
-        }
-
-        return {
-            importedCategoriesCount,
-            importedExercisesCount,
-            importedTemplatesCount,
-            importedWorkoutsCount
-        };
+    async executeSelectiveImport(options, payload) {
+        return await this.importExportService.executeSelectiveImport(options, payload);
     }
 
     async getExportData() {
-        return {
-            workouts: await this.db.getAll(STORE.WORKOUTS),
-            exercises: this.exercises,
-            categories: this.categories,
-            templates: this.templates,
-            activeWorkoutId: this.activeWorkoutId
-        };
+        return await this.importExportService.getExportData();
     }
 
     async importData(importedData) {
-        const stores = [STORE.WORKOUTS, STORE.EXERCISES, STORE.CATEGORIES, STORE.TEMPLATES, STORE.SETTINGS];
-        for (const store of stores) await this.db.clear(store);
-
-        if (importedData.workouts) for (const w of importedData.workouts) await this.db.save(STORE.WORKOUTS, w);
-        if (importedData.exercises) for (const e of importedData.exercises) await this.db.save(STORE.EXERCISES, e);
-        if (importedData.categories) for (const c of importedData.categories) await this.db.save(STORE.CATEGORIES, c);
-        if (importedData.templates) for (const t of importedData.templates) await this.db.save(STORE.TEMPLATES, t);
-        if (importedData.activeWorkoutId) await this.db.save(STORE.SETTINGS, { id: 'activeWorkoutId', value: importedData.activeWorkoutId });
+        return await this.importExportService.importData(importedData);
     }
 }
 
+/* --- File: js/view/charts.js --- */
+
+
+const CHART_COLORS = [
+    '#3498db', '#e74c3c', '#2ecc71', '#f1c40f', '#9b59b6',
+    '#34495e', '#8e44ad', '#1abc9c', '#d35400', '#c0392b'
+];
+
+/**
+ * Класс для отрисовки линейного графика на нативном Canvas
+ */
+class NativeLineChart {
+    constructor(canvasId) {
+        this.canvas = document.getElementById(canvasId);
+        this.ctx = this.canvas.getContext('2d');
+        this.padding = { top: 40, right: 30, bottom: 40, left: 50 };
+    }
+
+    // Метод для установки размеров Canvas
+    resize() {
+        const parent = this.canvas.parentElement;
+        const width = parent ? parent.clientWidth - 20 : (this.canvas.offsetWidth || 300);
+        if (width <= 0) return;
+
+        const dpr = window.devicePixelRatio || 1;
+        const height = width * 0.6; // Используем фиксированное соотношение 5:3
+        
+        this.canvas.width = width * dpr;
+        this.canvas.height = height * dpr;
+        this.canvas.style.width = width + 'px';
+        this.canvas.style.height = height + 'px';
+        this.ctx.scale(dpr, dpr);
+
+        // Сохраняем логические размеры для расчетов отрисовки
+        this.width = width;
+        this.height = height;
+    }
+
+    render(data, type = 'line', options = {}) {
+        if (!this.width) this.resize();
+        const { ctx, padding, width, height } = this;
+        ctx.clearRect(0, 0, width, height);
+
+        if (!data || data.length === 0) {
+            ctx.fillStyle = '#777';
+            ctx.textAlign = 'center';
+            ctx.font = '14px Arial';
+            ctx.fillText(STRINGS.COMMON.NO_DATA_CHART, width / 2, height / 2);
+            return;
+        }
+
+        // 1. Масштабирование
+        let values = [];
+        if (type === 'stacked') {
+            values = data.map(d => Object.values(d.categories).reduce((a, b) => a + b, 0));
+        } else {
+            values = data.map(d => d.value);
+        }
+
+        let minY = Math.min(...values);
+        let maxY = Math.max(...values);
+        
+        const range = maxY - minY || 10;
+        minY = (type === 'line') ? Math.max(0, minY - range * 0.1) : 0;
+        if (maxY <= minY) maxY = minY + 1; 
+        maxY = maxY + range * 0.1;
+
+        const plotWidth = width - padding.left - padding.right;
+        const plotHeight = height - padding.top - padding.bottom;
+
+        const getX = (i) => {
+            if (type === 'line' || data.length <= 1) {
+                return padding.left + (i * plotWidth / (data.length - 1 || 1));
+            } else {
+                const segmentWidth = plotWidth / data.length;
+                return padding.left + (i * segmentWidth) + segmentWidth / 2;
+            }
+        };
+        const getY = (val) => height - padding.bottom - ((val - minY) * plotHeight / (maxY - minY));
+        const barWidth = plotWidth / (data.length || 1) * 0.7;
+
+        // 2. Сетка и Оси
+        ctx.strokeStyle = '#e0e0e0';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(padding.left, padding.top);
+        ctx.lineTo(padding.left, height - padding.bottom);
+        ctx.lineTo(width - padding.right, height - padding.bottom);
+        ctx.stroke();
+
+        // 3. Подписи Y
+        ctx.fillStyle = '#888';
+        ctx.font = '10px Arial';
+        ctx.textAlign = 'right';
+        ctx.fillText(Math.round(maxY), padding.left - 10, padding.top);
+        ctx.fillText(Math.round(minY), padding.left - 10, height - padding.bottom);
+
+        if (type === 'line') {
+            // 4. Линия графика
+            ctx.beginPath();
+            ctx.strokeStyle = '#3498db';
+            ctx.lineWidth = 3;
+            ctx.lineJoin = 'round';
+            data.forEach((point, i) => {
+                const x = getX(i);
+                const y = getY(point.value);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+
+             // Точки
+            data.forEach((point, i) => {
+                const x = getX(i);
+                const y = getY(point.value);
+                ctx.fillStyle = '#2c3e50';
+                ctx.beginPath();
+                ctx.arc(x, y, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#333';
+                ctx.fillText(Math.round(point.value), x, y - 10);
+            });
+        } else if (type === 'bar') {
+            data.forEach((point, i) => {
+                const xCenter = getX(i);
+                const y = getY(point.value);
+                ctx.fillStyle = options.barColor || '#3498db';
+                ctx.fillRect(xCenter - barWidth / 2, y, barWidth, (height - padding.bottom) - y);
+                ctx.fillStyle = '#333';
+                ctx.textAlign = 'center';
+                ctx.fillText(Math.round(point.value), xCenter, y - 5);
+            });
+        } else if (type === 'stacked') {
+            const colors = this.colors || options.colors || CHART_COLORS;
+            data.forEach((point, i) => {
+                let currentYOffset = 0;
+                const xCenter = getX(i);
+                Object.entries(point.categories).forEach(([cat, val], idx) => {
+                    if (val === 0) return;
+                    const h = (val / (maxY - minY)) * plotHeight;
+                    const y = (height - padding.bottom) - h - currentYOffset;
+                    ctx.fillStyle = colors[idx % colors.length];
+                    ctx.fillRect(xCenter - barWidth / 2, y, barWidth, h);
+                    currentYOffset += h;
+                });
+                // Выводим общее значение для всего столбца
+                const totalBarValue = Object.values(point.categories).reduce((a, b) => a + b, 0);
+                ctx.fillStyle = '#333';
+                ctx.textAlign = 'center';
+                ctx.fillText(Math.round(totalBarValue), xCenter, getY(totalBarValue) - 5);
+            });
+        }
+
+        // 5. Даты (общие для всех типов)
+        data.forEach((point, i) => {
+            const x = getX(i);
+            if (i === 0 || i === data.length - 1 || data.length < 5) {
+                ctx.fillStyle = '#888';
+                ctx.textAlign = 'center';
+                const shortDate = point.date.split('-').slice(1).reverse().join('.');
+                ctx.fillText(shortDate, x, height - padding.bottom + 15);
+            }
+        });
+    }
+}
+
+/**
+ * Класс для отрисовки круговой диаграммы (Doughnut)
+ */
+class NativePieChart {
+    constructor(canvasId) {
+        this.canvas = document.getElementById(canvasId);
+        this.ctx = this.canvas.getContext('2d');
+    }
+
+    resize() {
+        const parent = this.canvas.parentElement;
+        const width = parent ? parent.clientWidth - 20 : (this.canvas.offsetWidth || 300);
+        if (width <= 0) return;
+
+        const dpr = window.devicePixelRatio || 1;
+        const height = width * 0.8; // Соотношение сторон
+        this.canvas.width = width * dpr;
+        this.canvas.height = height * dpr;
+        this.canvas.style.width = width + 'px';
+        this.canvas.style.height = height + 'px';
+        this.ctx.scale(dpr, dpr);
+        this.width = width;
+        this.height = height;
+    }
+
+    render(data, options = {}) {
+        if (!this.width) this.resize();
+        const { ctx, width, height } = this;
+        ctx.clearRect(0, 0, width, height);
+
+        const values = Object.values(data);
+        const total = values.reduce((a, b) => a + b, 0);
+        
+        if (total === 0) {
+            ctx.fillStyle = '#777';
+            ctx.textAlign = 'center';
+            ctx.fillText(STRINGS.COMMON.NO_DATA_SIMPLE, width / 2, height / 2);
+            return;
+        }
+
+        const colors = this.colors || options.colors || CHART_COLORS;
+        const centerX = width / 2;
+        const centerY = height * 0.5; // Смещаем центр на 10% ниже
+        const radius = Math.min(centerX, centerY) * 0.5; // Уменьшаем радиус, чтобы освободить место для подписей
+        let startAngle = -Math.PI / 2;
+
+        const sideY = { left: [], right: [] }; // Для отслеживания позиций и предотвращения наслоения
+
+        Object.entries(data).forEach(([key, value], i) => {
+            if (value === 0) return;
+            const sliceAngle = (value / total) * Math.PI * 2;
+            
+            ctx.beginPath();
+            ctx.moveTo(centerX, centerY);
+            ctx.arc(centerX, centerY, radius, startAngle, startAngle + sliceAngle);
+            ctx.fillStyle = colors[i % colors.length];
+            ctx.fill();
+
+            // Отрисовка подписей (Имя + %)
+            const percentage = Math.round((value / total) * 100);
+            const middleAngle = startAngle + sliceAngle / 2;
+            
+            const cos = Math.cos(middleAngle);
+            const sin = Math.sin(middleAngle);
+            const isRight = cos >= 0;
+
+            // Координаты начала линии (на краю сектора)
+            const x1 = centerX + cos * radius;
+            const y1 = centerY + sin * radius;
+
+            // Координаты изгиба линии
+            let x2 = centerX + cos * (radius + 25);
+            let y2 = centerY + sin * (radius + 25);
+
+            // Предотвращение наслоения подписей по вертикали
+            const side = isRight ? 'right' : 'left';
+            const minDist = 16;
+            while (sideY[side].some(prevY => Math.abs(y2 - prevY) < minDist)) {
+                y2 += (sin >= 0 ? 5 : -5);
+            }
+            sideY[side].push(y2);
+
+            const x3 = isRight ? x2 + 35 : x2 - 35; // Конец линии подчеркивания
+
+            // Рисуем линию выноски и подчеркивание
+            ctx.strokeStyle = colors[i % colors.length];
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(x1, y1);
+            ctx.lineTo(x2, y2);
+            ctx.lineTo(x3, y2);
+            ctx.stroke();
+
+            // Рисуем текст подписи над линией подчеркивания
+            ctx.fillStyle = '#333';
+            ctx.textAlign = isRight ? 'left' : 'right';
+            ctx.font = '12px Arial';
+            ctx.shadowBlur = 0;
+            ctx.fillText(`${key}`+" "+`${percentage}%`, isRight ? x2 + 2 : x2 - 2, y2 - 4);
+
+            startAngle += sliceAngle;
+        });
+
+        // Рисуем "дырку" пончика
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radius * 0.6, 0, Math.PI * 2);
+        ctx.fillStyle = '#fff';
+        ctx.fill();
+
+        // Текст в центре
+        ctx.fillStyle = '#2c3e50';
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 20px Arial';
+        ctx.fillText(total, centerX, centerY + 5);
+        ctx.font = '12px Arial';
+        ctx.fillStyle = '#777';
+        ctx.fillText(STRINGS.COMMON.UNITS.SETS, centerX, centerY + 20);
+    }
+}
+
+
 /* --- File: js/view/workoutView.js --- */
+
+
 class WorkoutView {
     constructor() {
         this.container = document.getElementById('workout-list');
@@ -1755,8 +2071,6 @@ class WorkoutView {
             const template = model.templates.find(t => t.id === workout.templateId);
             if (template) workoutTitle = template.name;
         }
-
-
         this.titleEl.textContent = workoutTitle;
 
         const grouped = {};
@@ -2004,286 +2318,10 @@ class HistoryView {
 
 
 
-/**
- * Класс для отрисовки линейного графика на нативном Canvas
- */
-class NativeLineChart {
-    constructor(canvasId) {
-        this.canvas = document.getElementById(canvasId);
-        this.ctx = this.canvas.getContext('2d');
-        this.padding = { top: 40, right: 30, bottom: 40, left: 50 };
-    }
-
-    // Метод для установки размеров Canvas
-    resize() {
-        const parent = this.canvas.parentElement;
-        const width = parent ? parent.clientWidth - 20 : (this.canvas.offsetWidth || 300);
-        if (width <= 0) return;
-
-        const dpr = window.devicePixelRatio || 1;
-        const height = width * 0.6; // Используем фиксированное соотношение 5:3
-        
-        this.canvas.width = width * dpr;
-        this.canvas.height = height * dpr;
-        this.canvas.style.width = width + 'px';
-        this.canvas.style.height = height + 'px';
-        this.ctx.scale(dpr, dpr);
-
-        // Сохраняем логические размеры для расчетов отрисовки
-        this.width = width;
-        this.height = height;
-    }
-
-    render(data, type = 'line', options = {}) {
-        if (!this.width) this.resize();
-        const { ctx, padding, width, height } = this;
-        ctx.clearRect(0, 0, width, height);
-
-        if (!data || data.length === 0) {
-            ctx.fillStyle = '#777';
-            ctx.textAlign = 'center';
-            ctx.font = '14px Arial';
-            ctx.fillText(STRINGS.COMMON.NO_DATA_CHART, width / 2, height / 2);
-            return;
-        }
-
-        // 1. Масштабирование
-        let values = [];
-        if (type === 'stacked') {
-            values = data.map(d => Object.values(d.categories).reduce((a, b) => a + b, 0));
-        } else {
-            values = data.map(d => d.value);
-        }
-
-        let minY = Math.min(...values);
-        let maxY = Math.max(...values);
-        
-        const range = maxY - minY || 10;
-        minY = (type === 'line') ? Math.max(0, minY - range * 0.1) : 0;
-        if (maxY <= minY) maxY = minY + 1; 
-        maxY = maxY + range * 0.1;
-
-        const plotWidth = width - padding.left - padding.right;
-        const plotHeight = height - padding.top - padding.bottom;
-
-        const getX = (i) => {
-            if (type === 'line' || data.length <= 1) {
-                return padding.left + (i * plotWidth / (data.length - 1 || 1));
-            } else {
-                const segmentWidth = plotWidth / data.length;
-                return padding.left + (i * segmentWidth) + segmentWidth / 2;
-            }
-        };
-        const getY = (val) => height - padding.bottom - ((val - minY) * plotHeight / (maxY - minY));
-        const barWidth = plotWidth / (data.length || 1) * 0.7;
-
-        // 2. Сетка и Оси
-        ctx.strokeStyle = '#e0e0e0';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(padding.left, padding.top);
-        ctx.lineTo(padding.left, height - padding.bottom);
-        ctx.lineTo(width - padding.right, height - padding.bottom);
-        ctx.stroke();
-
-        // 3. Подписи Y
-        ctx.fillStyle = '#888';
-        ctx.font = '10px Arial';
-        ctx.textAlign = 'right';
-        ctx.fillText(Math.round(maxY), padding.left - 10, padding.top);
-        ctx.fillText(Math.round(minY), padding.left - 10, height - padding.bottom);
-
-        if (type === 'line') {
-            // 4. Линия графика
-            ctx.beginPath();
-            ctx.strokeStyle = '#3498db';
-            ctx.lineWidth = 3;
-            ctx.lineJoin = 'round';
-            data.forEach((point, i) => {
-                const x = getX(i);
-                const y = getY(point.value);
-                if (i === 0) ctx.moveTo(x, y);
-                else ctx.lineTo(x, y);
-            });
-            ctx.stroke();
-
-             // Точки
-            data.forEach((point, i) => {
-                const x = getX(i);
-                const y = getY(point.value);
-                ctx.fillStyle = '#2c3e50';
-                ctx.beginPath();
-                ctx.arc(x, y, 4, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = '#333';
-                ctx.fillText(Math.round(point.value), x, y - 10);
-            });
-        } else if (type === 'bar') {
-            data.forEach((point, i) => {
-                const xCenter = getX(i);
-                const y = getY(point.value);
-                ctx.fillStyle = options.barColor || '#3498db';
-                ctx.fillRect(xCenter - barWidth / 2, y, barWidth, (height - padding.bottom) - y);
-                ctx.fillStyle = '#333';
-                ctx.textAlign = 'center';
-                ctx.fillText(Math.round(point.value), xCenter, y - 5);
-            });
-        } else if (type === 'stacked') {
-            const colors = this.colors || StatisticsView.CATEGORY_COLORS;
-            data.forEach((point, i) => {
-                let currentYOffset = 0;
-                const xCenter = getX(i);
-                Object.entries(point.categories).forEach(([cat, val], idx) => {
-                    if (val === 0) return;
-                    const h = (val / (maxY - minY)) * plotHeight;
-                    const y = (height - padding.bottom) - h - currentYOffset;
-                    ctx.fillStyle = colors[idx % colors.length];
-                    ctx.fillRect(xCenter - barWidth / 2, y, barWidth, h);
-                    currentYOffset += h;
-                });
-                // Выводим общее значение для всего столбца
-                const totalBarValue = Object.values(point.categories).reduce((a, b) => a + b, 0);
-                ctx.fillStyle = '#333';
-                ctx.textAlign = 'center';
-                ctx.fillText(Math.round(totalBarValue), xCenter, getY(totalBarValue) - 5);
-            });
-        }
-
-        // 5. Даты (общие для всех типов)
-        data.forEach((point, i) => {
-            const x = getX(i);
-            if (i === 0 || i === data.length - 1 || data.length < 5) {
-                ctx.fillStyle = '#888';
-                ctx.textAlign = 'center';
-                const shortDate = point.date.split('-').slice(1).reverse().join('.');
-                ctx.fillText(shortDate, x, height - padding.bottom + 15);
-            }
-        });
-    }
-}
-
-/**
- * Класс для отрисовки круговой диаграммы (Doughnut)
- */
-class NativePieChart {
-    constructor(canvasId) {
-        this.canvas = document.getElementById(canvasId);
-        this.ctx = this.canvas.getContext('2d');
-    }
-
-    resize() {
-        const parent = this.canvas.parentElement;
-        const width = parent ? parent.clientWidth - 20 : (this.canvas.offsetWidth || 300);
-        if (width <= 0) return;
-
-        const dpr = window.devicePixelRatio || 1;
-        const height = width * 0.8; // Соотношение сторон
-        this.canvas.width = width * dpr;
-        this.canvas.height = height * dpr;
-        this.canvas.style.width = width + 'px';
-        this.canvas.style.height = height + 'px';
-        this.ctx.scale(dpr, dpr);
-        this.width = width;
-        this.height = height;
-    }
-
-    render(data) {
-        if (!this.width) this.resize();
-        const { ctx, width, height } = this;
-        ctx.clearRect(0, 0, width, height);
-
-        const values = Object.values(data);
-        const total = values.reduce((a, b) => a + b, 0);
-        
-        if (total === 0) {
-            ctx.fillStyle = '#777';
-            ctx.textAlign = 'center';
-            ctx.fillText(STRINGS.COMMON.NO_DATA_SIMPLE, width / 2, height / 2);
-            return;
-        }
-
-        const centerX = width / 2;
-        const centerY = height * 0.5; // Смещаем центр на 10% ниже
-        const radius = Math.min(centerX, centerY) * 0.5; // Уменьшаем радиус, чтобы освободить место для подписей
-        let startAngle = -Math.PI / 2;
-
-        const sideY = { left: [], right: [] }; // Для отслеживания позиций и предотвращения наслоения
-
-        Object.entries(data).forEach(([key, value], i) => {
-            if (value === 0) return;
-            const sliceAngle = (value / total) * Math.PI * 2;
-            
-            ctx.beginPath();
-            ctx.moveTo(centerX, centerY);
-            ctx.arc(centerX, centerY, radius, startAngle, startAngle + sliceAngle);
-            ctx.fillStyle = StatisticsView.CATEGORY_COLORS[i % StatisticsView.CATEGORY_COLORS.length];
-            ctx.fill();
-
-            // Отрисовка подписей (Имя + %)
-            const percentage = Math.round((value / total) * 100);
-            const middleAngle = startAngle + sliceAngle / 2;
-            
-            const cos = Math.cos(middleAngle);
-            const sin = Math.sin(middleAngle);
-            const isRight = cos >= 0;
-
-            // Координаты начала линии (на краю сектора)
-            const x1 = centerX + cos * radius;
-            const y1 = centerY + sin * radius;
-
-            // Координаты изгиба линии
-            let x2 = centerX + cos * (radius + 25);
-            let y2 = centerY + sin * (radius + 25);
-
-            // Предотвращение наслоения подписей по вертикали
-            const side = isRight ? 'right' : 'left';
-            const minDist = 16;
-            while (sideY[side].some(prevY => Math.abs(y2 - prevY) < minDist)) {
-                y2 += (sin >= 0 ? 5 : -5);
-            }
-            sideY[side].push(y2);
-
-            const x3 = isRight ? x2 + 35 : x2 - 35; // Конец линии подчеркивания
-
-            // Рисуем линию выноски и подчеркивание
-            ctx.strokeStyle = StatisticsView.CATEGORY_COLORS[i % StatisticsView.CATEGORY_COLORS.length];
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(x1, y1);
-            ctx.lineTo(x2, y2);
-            ctx.lineTo(x3, y2);
-            ctx.stroke();
-
-            // Рисуем текст подписи над линией подчеркивания
-            ctx.fillStyle = '#333';
-            ctx.textAlign = isRight ? 'left' : 'right';
-            ctx.font = '12px Arial';
-            ctx.shadowBlur = 0;
-            ctx.fillText(`${key}`+" "+`${percentage}%`, isRight ? x2 + 2 : x2 - 2, y2 - 4);
-
-            startAngle += sliceAngle;
-        });
-
-        // Рисуем "дырку" пончика
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, radius * 0.6, 0, Math.PI * 2);
-        ctx.fillStyle = '#fff';
-        ctx.fill();
-
-        // Текст в центре
-        ctx.fillStyle = '#2c3e50';
-        ctx.textAlign = 'center';
-        ctx.font = 'bold 20px Arial';
-        ctx.fillText(total, centerX, centerY + 5);
-        ctx.font = '12px Arial';
-        ctx.fillStyle = '#777';
-        ctx.fillText(STRINGS.COMMON.UNITS.SETS, centerX, centerY + 20);
-    }
-}
 
 class StatisticsView {
     // Цвета для категорий, чтобы они были одинаковыми на графике и в легенде
-    static CATEGORY_COLORS = ['#3498db', '#e74c3c', '#2ecc71', '#f1c40f', '#9b59b6', '#34495e', '#8e44ad', '#1abc9c', '#d35400', '#c0392b'];
+    static CATEGORY_COLORS = CHART_COLORS;
 
     constructor() {
         this.totalWorkoutsEl = document.getElementById('stat-total-workouts');
@@ -2824,30 +2862,18 @@ class SettingsView {
     }
 }
 
-/* --- File: js/view/appView.js --- */
-
-
-
-
-
-class AppView {
+/* --- File: js/view/exerciseModalView.js --- */
+class ExerciseModalView {
     constructor() {
-        this.workoutView = new WorkoutView();
-        this.historyView = new HistoryView();
-        this.settingsView = new SettingsView();
-        this.statisticsView = new StatisticsView();
         this.addingToLibraryOnly = false;
-        
-        this.timeContainer = document.getElementById('estimated-time-container');
 
         this.els = {
-            mainNavbar: document.getElementById('main-navbar'),
-            btnHamburger: document.getElementById('btn-hamburger'),
-            sideMenu: document.getElementById('side-menu'),
-            menuOverlay: document.getElementById('menu-overlay'),
-            pageTitle: document.getElementById('page-title'),
-            btnPrevWorkout: document.getElementById('btn-prev-workout'),
-            btnNextWorkout: document.getElementById('btn-next-workout'),
+            addExFormContainer: document.getElementById('add-ex-form-container'),
+            addExFormTitle: document.getElementById('add-ex-form-title'),
+            categorySelectWrapper: document.getElementById('category-select-wrapper'),
+            libSelectWrapper: document.getElementById('library-select-wrapper'),
+            customExFields: document.getElementById('custom-ex-fields'),
+            selectedExTargetInfo: document.getElementById('selected-ex-target-info'),
             btnShowAddEx: document.getElementById('btn-show-add-ex'),
             btnShowAddLibEx: document.getElementById('btn-show-add-lib-ex'),
             btnCancelNewEx: document.getElementById('btn-cancel-new-ex'),
@@ -2856,15 +2882,190 @@ class AppView {
             newExCat: document.getElementById('newExCat'),
             newExTarget: document.getElementById('newExTarget'),
             btnSaveNewEx: document.getElementById('btn-save-new-ex'),
-            btnShowTemplates: document.getElementById('btn-show-templates'),
-            tplOptionsUi: document.getElementById('template-options-ui'),
-            tplSelectionContainer: document.getElementById('template-selection-container'),
-            btnCancelTpl: document.getElementById('btn-cancel-template'),
-            btnConfirmTpl: document.getElementById('btn-confirm-template'),
-            btnExport: document.getElementById('btn-export-data'),
-            btnImport: document.getElementById('btn-import-data'),
-            
+            tabWorkout: document.getElementById('tab-workout')
+        };
+    }
+
+    bindEvents(controller) {
+        if (this.els.btnShowAddEx) {
+            this.els.btnShowAddEx.addEventListener('click', () => this.show(null, false, controller.model));
+        }
+        if (this.els.btnShowAddLibEx) {
+            this.els.btnShowAddLibEx.addEventListener('click', () => this.show(null, true, controller.model));
+        }
+        if (this.els.btnCancelNewEx) {
+            this.els.btnCancelNewEx.addEventListener('click', () => this.hide());
+        }
+
+        if (this.els.newExCat) {
+            this.els.newExCat.addEventListener('change', () => {
+                const catId = this.els.newExCat.value;
+                this.updateExerciseList(controller.model, catId);
+            });
+        }
+
+        if (this.els.exLibSelect) {
+            this.els.exLibSelect.addEventListener('change', () => {
+                const id = this.els.exLibSelect.value;
+                if (id === 'new') {
+                    this.els.customExFields.classList.remove('d-none');
+                    this.els.selectedExTargetInfo.classList.add('d-none');
+                    this.els.newExName.value = '';
+                    this.els.newExTarget.value = '';
+                    this.els.newExName.focus();
+                } else if (id) {
+                    this.els.customExFields.classList.add('d-none');
+                    const ex = controller.model.getLibraryExercise(id);
+                    if (ex && ex.target) {
+                        this.els.selectedExTargetInfo.textContent = `Цель:${ex.target}`;
+                        this.els.selectedExTargetInfo.classList.remove('d-none');
+                    } else {
+                        this.els.selectedExTargetInfo.classList.add('d-none');
+                    }
+                } else {
+                    this.els.customExFields.classList.add('d-none');
+                    this.els.selectedExTargetInfo.classList.add('d-none');
+                }
+            });
+        }
+
+        if (this.els.btnSaveNewEx) {
+            this.els.btnSaveNewEx.addEventListener('click', () => controller.handleSaveNewExercise(this.addingToLibraryOnly));
+        }
+    }
+
+    show(categoryId, isLibraryOnly, model) {
+        this.addingToLibraryOnly = isLibraryOnly;
+        if (this.els.addExFormContainer) {
+            this.els.addExFormContainer.classList.remove('d-none');
+        }
+
+        if (this.els.btnShowAddEx) {
+            this.els.btnShowAddEx.classList.toggle('d-none', isLibraryOnly);
+        }
+        if (this.els.btnShowAddLibEx) {
+            this.els.btnShowAddLibEx.classList.toggle('d-none', !isLibraryOnly);
+        }
+        if (this.els.libSelectWrapper) {
+            this.els.libSelectWrapper.classList.toggle('d-none', isLibraryOnly);
+        }
+
+        if (this.els.addExFormTitle) {
+            if (isLibraryOnly) {
+                this.els.addExFormTitle.textContent = 'Новое упражнение в библиотеку';
+            } else if (categoryId && model) {
+                this.els.addExFormTitle.textContent = `Добавить в "${model.getCategoryName(categoryId)}"`;
+            } else {
+                this.els.addExFormTitle.textContent = 'Добавить упражнение';
+            }
+        }
+
+        this.populateForm(model, categoryId, isLibraryOnly);
+
+        if (categoryId && this.els.newExCat) {
+            this.els.newExCat.value = categoryId;
+            this.els.newExCat.disabled = true;
+        } else if (this.els.newExCat) {
+            this.els.newExCat.disabled = false;
+        }
+
+        const parentBtn = isLibraryOnly ? this.els.btnShowAddLibEx : this.els.btnShowAddEx;
+        if (parentBtn && parentBtn.parentNode && this.els.addExFormContainer) {
+            parentBtn.parentNode.insertBefore(this.els.addExFormContainer, parentBtn);
+            this.els.addExFormContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    }
+
+    hide() {
+        if (this.els.addExFormContainer) {
+            this.els.addExFormContainer.classList.add('d-none');
+        }
+        if (this.els.btnShowAddEx) {
+            this.els.btnShowAddEx.classList.remove('d-none');
+        }
+        if (this.els.btnShowAddLibEx) {
+            this.els.btnShowAddLibEx.classList.remove('d-none');
+        }
+        if (this.els.tabWorkout && this.els.addExFormContainer) {
+            this.els.tabWorkout.appendChild(this.els.addExFormContainer);
+        }
+        if (this.els.newExName) this.els.newExName.value = '';
+        if (this.els.newExTarget) this.els.newExTarget.value = '';
+        if (this.els.customExFields) this.els.customExFields.classList.add('d-none');
+        if (this.els.selectedExTargetInfo) this.els.selectedExTargetInfo.classList.add('d-none');
+        if (this.els.newExCat) this.els.newExCat.disabled = false;
+        if (this.els.exLibSelect) this.els.exLibSelect.disabled = false;
+    }
+
+    updateExerciseList(model, catId) {
+        const libSel = this.els.exLibSelect;
+        if (!libSel) return;
+
+        if (!catId) {
+            libSel.innerHTML = '<option value="" disabled selected>-- Сначала выберите категорию --</option>';
+            libSel.disabled = true;
+            if (this.els.customExFields) this.els.customExFields.classList.add('d-none');
+            if (this.els.selectedExTargetInfo) this.els.selectedExTargetInfo.classList.add('d-none');
+            return;
+        }
+
+        libSel.disabled = false;
+        const filtered = (model?.exercises || [])
+            .filter(e => e.categoryId === catId)
+            .sort((a, b) => a.name.localeCompare(b.name));
+
+        if (filtered.length === 0) {
+            libSel.innerHTML = '<option value="new" selected>+ Новое упражнение (вручную)</option>';
+            if (this.els.customExFields) this.els.customExFields.classList.remove('d-none');
+            if (this.els.selectedExTargetInfo) this.els.selectedExTargetInfo.classList.add('d-none');
+            if (this.els.newExName) this.els.newExName.value = '';
+            if (this.els.newExTarget) this.els.newExTarget.value = '';
+        } else {
+            libSel.innerHTML = '<option value="" disabled selected>-- Выберите упражнение --</option>' + 
+                filtered.map(e => `<option value="${e.id}">${e.name}</option>`).join('') + 
+                '<option value="new">+ Новое упражнение (вручную)</option>';
+            if (this.els.customExFields) this.els.customExFields.classList.add('d-none');
+            if (this.els.selectedExTargetInfo) this.els.selectedExTargetInfo.classList.add('d-none');
+        }
+    }
+
+    populateForm(model, catId, isLibraryOnly) {
+        const catSel = this.els.newExCat;
+        if (!catSel) return;
+
+        const categories = model?.categories || [];
+
+        if (isLibraryOnly) {
+            catSel.innerHTML = '<option value="" disabled selected>-- Выберите категорию --</option>' +
+                categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            if (catId) catSel.value = catId;
+            if (this.els.customExFields) this.els.customExFields.classList.remove('d-none');
+            if (this.els.newExName) this.els.newExName.value = '';
+            if (this.els.newExTarget) this.els.newExTarget.value = '';
+            if (this.els.selectedExTargetInfo) this.els.selectedExTargetInfo.classList.add('d-none');
+            return;
+        }
+
+        catSel.innerHTML = '<option value="" disabled selected>-- Выберите категорию --</option>' +
+            categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+
+        if (catId) {
+            catSel.value = catId;
+            this.updateExerciseList(model, catId);
+        } else {
+            catSel.value = '';
+            this.updateExerciseList(model, null);
+        }
+    }
+}
+
+
+/* --- File: js/view/importExportModalView.js --- */
+class ImportExportModalView {
+    constructor() {
+        this.els = {
             // Export Modal
+            btnExport: document.getElementById('btn-export-data'),
             modalExport: document.getElementById('modal-export'),
             btnCloseExportModal: document.getElementById('btn-close-export-modal'),
             btnExportSelectAll: document.getElementById('btn-export-select-all'),
@@ -2875,6 +3076,7 @@ class AppView {
             btnExportDownloadJson: document.getElementById('btn-export-download-json'),
 
             // Import Modal
+            btnImport: document.getElementById('btn-import-data'),
             modalImport: document.getElementById('modal-import'),
             btnCloseImportModal: document.getElementById('btn-close-import-modal'),
             importFileInput: document.getElementById('import-file-input'),
@@ -2886,17 +3088,245 @@ class AppView {
             btnImportSelectAll: document.getElementById('btn-import-select-all'),
             btnImportDeselectAll: document.getElementById('btn-import-deselect-all'),
             importOptionsList: document.getElementById('import-options-list'),
-            btnConfirmImportSelected: document.getElementById('btn-confirm-import-selected'),
-
-            addExFormContainer: document.getElementById('add-ex-form-container'),
-            addExFormTitle: document.getElementById('add-ex-form-title'),
-            categorySelectWrapper: document.getElementById('category-select-wrapper'),
-            libSelectWrapper: document.getElementById('library-select-wrapper'),
-            customExFields: document.getElementById('custom-ex-fields'),
-            selectedExTargetInfo: document.getElementById('selected-ex-target-info'),
-            tabWorkout: document.getElementById('tab-workout'),
-            tplSelectDropdown: () => document.getElementById('template-select-dropdown')
+            btnConfirmImportSelected: document.getElementById('btn-confirm-import-selected')
         };
+    }
+
+    bindEvents(controller) {
+        // Export Modal Events
+        if (this.els.btnExport) {
+            this.els.btnExport.addEventListener('click', () => controller.handleOpenExport());
+        }
+        if (this.els.btnCloseExportModal) {
+            this.els.btnCloseExportModal.addEventListener('click', () => this.closeExportModal());
+        }
+        if (this.els.modalExport) {
+            this.els.modalExport.addEventListener('click', (e) => {
+                if (e.target === this.els.modalExport) this.closeExportModal();
+            });
+        }
+        if (this.els.btnExportSelectAll) {
+            this.els.btnExportSelectAll.addEventListener('click', () => this.setAllExportCheckboxes(true));
+        }
+        if (this.els.btnExportDeselectAll) {
+            this.els.btnExportDeselectAll.addEventListener('click', () => this.setAllExportCheckboxes(false));
+        }
+        if (this.els.btnExportCopyAi) {
+            this.els.btnExportCopyAi.addEventListener('click', () => controller.handleExportCopyAi());
+        }
+        if (this.els.btnExportCopyJson) {
+            this.els.btnExportCopyJson.addEventListener('click', () => controller.handleExportCopyJson());
+        }
+        if (this.els.btnExportDownloadJson) {
+            this.els.btnExportDownloadJson.addEventListener('click', () => controller.handleExportDownloadJson());
+        }
+
+        // Import Modal Events
+        if (this.els.btnImport) {
+            this.els.btnImport.addEventListener('click', () => controller.handleOpenImport());
+        }
+        if (this.els.btnCloseImportModal) {
+            this.els.btnCloseImportModal.addEventListener('click', () => this.closeImportModal());
+        }
+        if (this.els.modalImport) {
+            this.els.modalImport.addEventListener('click', (e) => {
+                if (e.target === this.els.modalImport) this.closeImportModal();
+            });
+        }
+        if (this.els.btnImportTriggerFile && this.els.importFileInput) {
+            this.els.btnImportTriggerFile.addEventListener('click', () => this.els.importFileInput.click());
+        }
+        if (this.els.importFileInput) {
+            this.els.importFileInput.addEventListener('change', (e) => controller.handleImportFileSelected(e));
+        }
+        if (this.els.btnImportPasteClipboard) {
+            this.els.btnImportPasteClipboard.addEventListener('click', () => controller.handleImportPasteClipboard());
+        }
+        if (this.els.btnImportParse) {
+            this.els.btnImportParse.addEventListener('click', () => controller.handleParseImportText());
+        }
+        if (this.els.btnImportSelectAll) {
+            this.els.btnImportSelectAll.addEventListener('click', () => this.setAllImportCheckboxes(true));
+        }
+        if (this.els.btnImportDeselectAll) {
+            this.els.btnImportDeselectAll.addEventListener('click', () => this.setAllImportCheckboxes(false));
+        }
+        if (this.els.btnConfirmImportSelected) {
+            this.els.btnConfirmImportSelected.addEventListener('click', () => controller.handleConfirmImportSelected());
+        }
+    }
+
+    openExportModal(model) {
+        if (!this.els.exportOptionsList) return;
+        this.els.exportOptionsList.innerHTML = '';
+        const frag = document.createDocumentFragment();
+
+        // 1. Library option
+        const libLabel = document.createElement('label');
+        libLabel.className = 'checklist-item';
+        libLabel.innerHTML = `<input type="checkbox" id="export-check-library" checked><span>📚<strong>Каталог упражнений</strong>(${model.exercises.length} упр.,${model.categories.length} кат.)</span>`;
+        frag.appendChild(libLabel);
+
+        // 2. Templates
+        if (model.templates && model.templates.length > 0) {
+            model.templates.forEach(tpl => {
+                const tplLabel = document.createElement('label');
+                tplLabel.className = 'checklist-item';
+                tplLabel.innerHTML = `<input type="checkbox" class="export-check-template" data-tpl-id="${tpl.id}" checked><span>📋 Шаблон:<strong>${tpl.name}</strong>(${tpl.exercises.length} упр.)</span>`;
+                frag.appendChild(tplLabel);
+            });
+        }
+
+        // 3. History
+        const histLabel = document.createElement('label');
+        histLabel.className = 'checklist-item';
+        histLabel.innerHTML = `<input type="checkbox" id="export-check-history" checked><span>⏱️<strong>История тренировок</strong>(все сохраненные записи)</span>`;
+        frag.appendChild(histLabel);
+
+        this.els.exportOptionsList.appendChild(frag);
+        if (this.els.modalExport) this.els.modalExport.classList.remove('d-none');
+    }
+
+    closeExportModal() {
+        if (this.els.modalExport) this.els.modalExport.classList.add('d-none');
+    }
+
+    setAllExportCheckboxes(checked) {
+        if (!this.els.exportOptionsList) return;
+        const checkboxes = this.els.exportOptionsList.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(cb => cb.checked = checked);
+    }
+
+    getExportSelection() {
+        const list = this.els.exportOptionsList;
+        if (!list) return null;
+        const includeLibrary = Boolean(list.querySelector('#export-check-library')?.checked);
+        const templateIds = Array.from(list.querySelectorAll('.export-check-template:checked')).map(el => el.dataset.tplId);
+        const includeHistory = Boolean(list.querySelector('#export-check-history')?.checked);
+
+        if (!includeLibrary && templateIds.length === 0 && !includeHistory) {
+            return null;
+        }
+
+        return { includeLibrary, templateIds, includeHistory };
+    }
+
+    openImportModal() {
+        if (this.els.importJsonTextarea) this.els.importJsonTextarea.value = '';
+        if (this.els.importDetectedContainer) this.els.importDetectedContainer.classList.add('d-none');
+        if (this.els.importOptionsList) this.els.importOptionsList.innerHTML = '';
+        if (this.els.modalImport) this.els.modalImport.classList.remove('d-none');
+    }
+
+    closeImportModal() {
+        if (this.els.modalImport) this.els.modalImport.classList.add('d-none');
+    }
+
+    setAllImportCheckboxes(checked) {
+        if (!this.els.importOptionsList) return;
+        const checkboxes = this.els.importOptionsList.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(cb => cb.checked = checked);
+    }
+
+    renderDetectedImport(payload) {
+        if (!this.els.importOptionsList) return;
+        this.els.importOptionsList.innerHTML = '';
+        const frag = document.createDocumentFragment();
+
+        if (payload.hasLibrary) {
+            const libLabel = document.createElement('label');
+            libLabel.className = 'checklist-item';
+            libLabel.innerHTML = `<input type="checkbox" id="import-check-library" checked><span>📚<strong>Каталог упражнений</strong>(${payload.exercises.length} упр.,${payload.categories.length} кат.)</span>`;
+            frag.appendChild(libLabel);
+        }
+
+        if (payload.hasTemplates) {
+            payload.templates.forEach((tpl, idx) => {
+                const tplLabel = document.createElement('label');
+                tplLabel.className = 'checklist-item';
+                const exCount = (tpl.exercises || []).length;
+                tplLabel.innerHTML = `<input type="checkbox" class="import-check-template" data-idx="${idx}" checked><span>📋 Шаблон:<strong>${tpl.name||'Шаблон без названия'}</strong>(${exCount} упр.)</span>`;
+                frag.appendChild(tplLabel);
+            });
+        }
+
+        if (payload.hasHistory) {
+            const histLabel = document.createElement('label');
+            histLabel.className = 'checklist-item';
+            histLabel.innerHTML = `<input type="checkbox" id="import-check-history" checked><span>⏱️<strong>История тренировок</strong>(${payload.workouts.length} записей)</span>`;
+            frag.appendChild(histLabel);
+        }
+
+        this.els.importOptionsList.appendChild(frag);
+        if (this.els.importDetectedContainer) {
+            this.els.importDetectedContainer.classList.remove('d-none');
+        }
+    }
+
+    getImportSelection() {
+        const list = this.els.importOptionsList;
+        if (!list) return null;
+        const importLibrary = Boolean(list.querySelector('#import-check-library')?.checked);
+        const selectedTemplateIndices = Array.from(list.querySelectorAll('.import-check-template:checked')).map(el => parseInt(el.dataset.idx, 10));
+        const importHistory = Boolean(list.querySelector('#import-check-history')?.checked);
+
+        if (!importLibrary && selectedTemplateIndices.length === 0 && !importHistory) {
+            return null;
+        }
+
+        return { importLibrary, selectedTemplateIndices, importHistory };
+    }
+}
+
+
+/* --- File: js/view/appView.js --- */
+
+
+
+
+
+
+
+
+class AppView {
+    constructor() {
+        this.workoutView = new WorkoutView();
+        this.historyView = new HistoryView();
+        this.settingsView = new SettingsView();
+        this.statisticsView = new StatisticsView();
+        this.exerciseModalView = new ExerciseModalView();
+        this.importExportModalView = new ImportExportModalView();
+        
+        this.timeContainer = document.getElementById('estimated-time-container');
+
+        this.els = {
+            mainNavbar: document.getElementById('main-navbar'),
+            btnHamburger: document.getElementById('btn-hamburger'),
+            sideMenu: document.getElementById('side-menu'),
+            menuOverlay: document.getElementById('menu-overlay'),
+            pageTitle: document.getElementById('page-title'),
+            btnPrevWorkout: document.getElementById('btn-prev-workout'),
+            btnNextWorkout: document.getElementById('btn-next-workout'),
+            btnShowTemplates: document.getElementById('btn-show-templates'),
+            tplOptionsUi: document.getElementById('template-options-ui'),
+            tplSelectionContainer: document.getElementById('template-selection-container'),
+            btnCancelTpl: document.getElementById('btn-cancel-template'),
+            btnConfirmTpl: document.getElementById('btn-confirm-template'),
+            tabWorkout: document.getElementById('tab-workout'),
+            tplSelectDropdown: () => document.getElementById('template-select-dropdown'),
+
+            // Keep child modal elements accessible for backward compatibility
+            ...this.exerciseModalView.els,
+            ...this.importExportModalView.els
+        };
+    }
+
+    get addingToLibraryOnly() {
+        return this.exerciseModalView.addingToLibraryOnly;
+    }
+
+    set addingToLibraryOnly(val) {
+        this.exerciseModalView.addingToLibraryOnly = val;
     }
 
     init(controller) {
@@ -2906,7 +3336,9 @@ class AppView {
         this.historyView.bindEvents(controller);
         this.settingsView.bindEvents(controller);
         this.statisticsView.bindEvents(controller);
-        this.bindModals(controller);
+        this.exerciseModalView.bindEvents(controller);
+        this.importExportModalView.bindEvents(controller);
+        this.bindWorkoutDraftEvents(controller);
     }
 
     async renderAll(model, statsService) {
@@ -2965,6 +3397,7 @@ class AppView {
             }
             return;
         }
+
         if (!model.activeWorkoutId) {
             if (this.els.btnPrevWorkout) this.els.btnPrevWorkout.disabled = true;
             if (this.els.btnNextWorkout) {
@@ -3016,7 +3449,7 @@ class AppView {
         if (model.templates && model.templates.length > 0) {
             optionsHtml += model.templates.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
         }
-        this.els.tplOptionsUi.innerHTML = `<select id="template-select-dropdown" style="width:100%; padding:10px;">${optionsHtml}</select>`;
+        this.els.tplOptionsUi.innerHTML = `<select id="template-select-dropdown" style="width:100%;padding:10px;">${optionsHtml}</select>`;
         this.els.tplSelectionContainer.classList.remove('d-none');
 
         this.els.mainNavbar.style.setProperty('--progress', '0%');
@@ -3074,280 +3507,66 @@ class AppView {
         }
     }
 
-    
-    bindModals(controller) {
-        this.els.btnShowAddEx.addEventListener('click', () => this.showAddExerciseForm(null, false));
-        this.els.btnShowAddLibEx.addEventListener('click', () => this.showAddExerciseForm(null, true));
-        this.els.btnCancelNewEx.addEventListener('click', () => this.hideAddExerciseForm());
-        
-        this.els.newExCat.addEventListener('change', () => {
-            const catId = this.els.newExCat.value;
-            this.updateExerciseList(controller.model, catId);
-        });
-
-        this.els.exLibSelect.addEventListener('change', () => {
-            const id = this.els.exLibSelect.value;
-            if (id === 'new') {
-                this.els.customExFields.classList.remove('d-none');
-                this.els.selectedExTargetInfo.classList.add('d-none');
-                this.els.newExName.value = '';
-                this.els.newExTarget.value = '';
-                this.els.newExName.focus();
-            } else if (id) {
-                this.els.customExFields.classList.add('d-none');
-                const ex = controller.model.getLibraryExercise(id);
-                if (ex && ex.target) {
-                    this.els.selectedExTargetInfo.textContent = `Цель:${ex.target}`;
-                    this.els.selectedExTargetInfo.classList.remove('d-none');
-                } else {
-                    this.els.selectedExTargetInfo.classList.add('d-none');
-                }
-            } else {
-                this.els.customExFields.classList.add('d-none');
-                this.els.selectedExTargetInfo.classList.add('d-none');
-            }
-        });
-
-        this.els.btnSaveNewEx.addEventListener('click', () => controller.handleSaveNewExercise(this.addingToLibraryOnly));
-
-        this.els.btnShowTemplates.addEventListener('click', () => {
-            controller.startNewWorkoutDraft();
-
-
-
-
-
-
-
-        });
-
-        this.els.btnCancelTpl.addEventListener('click', () => {
-            controller.cancelWorkoutDraft();
-
-        });
-
-        this.els.btnConfirmTpl.addEventListener('click', () => {
-            controller.confirmWorkoutDraft();
-
-
-
-
-        });
-
-        // Export Modal Events
-        this.els.btnExport.addEventListener('click', () => controller.handleOpenExport());
-        this.els.btnCloseExportModal.addEventListener('click', () => this.closeExportModal());
-        this.els.modalExport.addEventListener('click', (e) => {
-            if (e.target === this.els.modalExport) this.closeExportModal();
-        });
-        this.els.btnExportSelectAll.addEventListener('click', () => this.setAllExportCheckboxes(true));
-        this.els.btnExportDeselectAll.addEventListener('click', () => this.setAllExportCheckboxes(false));
-        this.els.btnExportCopyAi.addEventListener('click', () => controller.handleExportCopyAi());
-        this.els.btnExportCopyJson.addEventListener('click', () => controller.handleExportCopyJson());
-        this.els.btnExportDownloadJson.addEventListener('click', () => controller.handleExportDownloadJson());
-
-        // Import Modal Events
-        this.els.btnImport.addEventListener('click', () => controller.handleOpenImport());
-        this.els.btnCloseImportModal.addEventListener('click', () => this.closeImportModal());
-        this.els.modalImport.addEventListener('click', (e) => {
-            if (e.target === this.els.modalImport) this.closeImportModal();
-        });
-        this.els.btnImportTriggerFile.addEventListener('click', () => this.els.importFileInput.click());
-        this.els.importFileInput.addEventListener('change', (e) => controller.handleImportFileSelected(e));
-        this.els.btnImportPasteClipboard.addEventListener('click', () => controller.handleImportPasteClipboard());
-        this.els.btnImportParse.addEventListener('click', () => controller.handleParseImportText());
-        this.els.btnImportSelectAll.addEventListener('click', () => this.setAllImportCheckboxes(true));
-        this.els.btnImportDeselectAll.addEventListener('click', () => this.setAllImportCheckboxes(false));
-        this.els.btnConfirmImportSelected.addEventListener('click', () => controller.handleConfirmImportSelected());
-    }
-
-    updateExerciseList(model, catId) {
-        const libSel = this.els.exLibSelect;
-        if (!catId) {
-            libSel.innerHTML = '<option value="" disabled selected>-- Сначала выберите категорию --</option>';
-            libSel.disabled = true;
-            this.els.customExFields.classList.add('d-none');
-            this.els.selectedExTargetInfo.classList.add('d-none');
-            return;
+    bindWorkoutDraftEvents(controller) {
+        if (this.els.btnShowTemplates) {
+            this.els.btnShowTemplates.addEventListener('click', () => {
+                controller.startNewWorkoutDraft();
+            });
         }
-
-        libSel.disabled = false;
-        const filtered = model.exercises
-            .filter(e => e.categoryId === catId)
-            .sort((a, b) => a.name.localeCompare(b.name));
-
-        if (filtered.length === 0) {
-            libSel.innerHTML = '<option value="new" selected>+ Новое упражнение (вручную)</option>';
-            this.els.customExFields.classList.remove('d-none');
-            this.els.selectedExTargetInfo.classList.add('d-none');
-            this.els.newExName.value = '';
-            this.els.newExTarget.value = '';
-        } else {
-            libSel.innerHTML = '<option value="" disabled selected>-- Выберите упражнение --</option>' + 
-                filtered.map(e => `<option value="${e.id}">${e.name}</option>`).join('') + 
-                '<option value="new">+ Новое упражнение (вручную)</option>';
-            this.els.customExFields.classList.add('d-none');
-            this.els.selectedExTargetInfo.classList.add('d-none');
+        if (this.els.btnCancelTpl) {
+            this.els.btnCancelTpl.addEventListener('click', () => {
+                controller.cancelWorkoutDraft();
+            });
+        }
+        if (this.els.btnConfirmTpl) {
+            this.els.btnConfirmTpl.addEventListener('click', () => {
+                controller.confirmWorkoutDraft();
+            });
         }
     }
 
     showAddExerciseForm(categoryId, isLibraryOnly) {
-        this.addingToLibraryOnly = isLibraryOnly;
-        this.els.addExFormContainer.classList.remove('d-none');
-        
-        this.els.btnShowAddEx.classList.toggle('d-none', isLibraryOnly);
-        this.els.btnShowAddLibEx.classList.toggle('d-none', !isLibraryOnly);
-        this.els.libSelectWrapper.classList.toggle('d-none', isLibraryOnly);
-        
-        if (this.els.addExFormTitle) {
-            if (isLibraryOnly) {
-                this.els.addExFormTitle.textContent = 'Новое упражнение в библиотеку';
-            } else if (categoryId && window.app && window.app.model) {
-                this.els.addExFormTitle.textContent = `Добавить в "${window.app.model.getCategoryName(categoryId)}"`;
-            } else {
-                this.els.addExFormTitle.textContent = 'Добавить упражнение';
-            }
-        }
-
-        window.app.populateAddExForm(categoryId, isLibraryOnly);
-        
-        if (categoryId) {
-            this.els.newExCat.value = categoryId;
-            this.els.newExCat.disabled = true;
-        } else {
-            this.els.newExCat.disabled = false;
-        }
-
-        const parentBtn = isLibraryOnly ? this.els.btnShowAddLibEx : this.els.btnShowAddEx;
-        parentBtn.parentNode.insertBefore(this.els.addExFormContainer, parentBtn);
-        this.els.addExFormContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        this.exerciseModalView.show(categoryId, isLibraryOnly, window.app ? window.app.model : null);
     }
 
     hideAddExerciseForm() {
-        this.els.addExFormContainer.classList.add('d-none');
-        this.els.btnShowAddEx.classList.remove('d-none');
-        const libBtn = this.els.btnShowAddLibEx;
-        if(libBtn) libBtn.classList.remove('d-none');
-        this.els.tabWorkout.appendChild(this.els.addExFormContainer);
-        this.els.newExName.value = '';
-        this.els.newExTarget.value = '';
-        this.els.customExFields.classList.add('d-none');
-        this.els.selectedExTargetInfo.classList.add('d-none');
-        this.els.newExCat.disabled = false;
-        this.els.exLibSelect.disabled = false;
+        this.exerciseModalView.hide();
+    }
+
+    updateExerciseList(model, catId) {
+        this.exerciseModalView.updateExerciseList(model, catId);
     }
 
     populateAddExForm(model, catId, isLibraryOnly) {
-        const catSel = this.els.newExCat;
-        
-        if (isLibraryOnly) {
-            catSel.innerHTML = '<option value="" disabled selected>-- Выберите категорию --</option>' +
-                model.categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-            if (catId) catSel.value = catId;
-            this.els.customExFields.classList.remove('d-none');
-            this.els.newExName.value = '';
-            this.els.newExTarget.value = '';
-            this.els.selectedExTargetInfo.classList.add('d-none');
-            return;
-        }
-
-        catSel.innerHTML = '<option value="" disabled selected>-- Выберите категорию --</option>' +
-            model.categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-
-        if (catId) {
-            catSel.value = catId;
-            this.updateExerciseList(model, catId);
-        } else {
-            catSel.value = '';
-            this.updateExerciseList(model, null);
-        }
+        this.exerciseModalView.populateForm(model, catId, isLibraryOnly);
     }
 
     openExportModal(model) {
-        this.els.exportOptionsList.innerHTML = '';
-        const frag = document.createDocumentFragment();
-
-        // 1. Library option
-        const libLabel = document.createElement('label');
-        libLabel.className = 'checklist-item';
-        libLabel.innerHTML = `<input type="checkbox" id="export-check-library" checked><span>📚<strong>Каталог упражнений</strong>(${model.exercises.length} упр.,${model.categories.length} кат.)</span>`;
-        frag.appendChild(libLabel);
-
-        // 2. Templates
-        if (model.templates.length > 0) {
-            model.templates.forEach(tpl => {
-                const tplLabel = document.createElement('label');
-                tplLabel.className = 'checklist-item';
-                tplLabel.innerHTML = `<input type="checkbox" class="export-check-template" data-tpl-id="${tpl.id}" checked><span>📋 Шаблон:<strong>${tpl.name}</strong>(${tpl.exercises.length} упр.)</span>`;
-                frag.appendChild(tplLabel);
-            });
-        }
-
-        // 3. History
-        const histLabel = document.createElement('label');
-        histLabel.className = 'checklist-item';
-        histLabel.innerHTML = `<input type="checkbox" id="export-check-history" checked><span>⏱️<strong>История тренировок</strong>(все сохраненные записи)</span>`;
-        frag.appendChild(histLabel);
-
-        this.els.exportOptionsList.appendChild(frag);
-        this.els.modalExport.classList.remove('d-none');
+        this.importExportModalView.openExportModal(model);
     }
 
     closeExportModal() {
-        this.els.modalExport.classList.add('d-none');
+        this.importExportModalView.closeExportModal();
     }
 
     setAllExportCheckboxes(checked) {
-        const checkboxes = this.els.exportOptionsList.querySelectorAll('input[type="checkbox"]');
-        checkboxes.forEach(cb => cb.checked = checked);
+        this.importExportModalView.setAllExportCheckboxes(checked);
     }
 
     openImportModal() {
-        this.els.importJsonTextarea.value = '';
-        this.els.importDetectedContainer.classList.add('d-none');
-        this.els.importOptionsList.innerHTML = '';
-        this.els.modalImport.classList.remove('d-none');
+        this.importExportModalView.openImportModal();
     }
 
     closeImportModal() {
-        this.els.modalImport.classList.add('d-none');
+        this.importExportModalView.closeImportModal();
     }
 
     setAllImportCheckboxes(checked) {
-        const checkboxes = this.els.importOptionsList.querySelectorAll('input[type="checkbox"]');
-        checkboxes.forEach(cb => cb.checked = checked);
+        this.importExportModalView.setAllImportCheckboxes(checked);
     }
 
     renderDetectedImport(payload) {
-        this.els.importOptionsList.innerHTML = '';
-        const frag = document.createDocumentFragment();
-
-        if (payload.hasLibrary) {
-            const libLabel = document.createElement('label');
-            libLabel.className = 'checklist-item';
-            libLabel.innerHTML = `<input type="checkbox" id="import-check-library" checked><span>📚<strong>Каталог упражнений</strong>(${payload.exercises.length} упр.,${payload.categories.length} кат.)</span>`;
-            frag.appendChild(libLabel);
-        }
-
-        if (payload.hasTemplates) {
-            payload.templates.forEach((tpl, idx) => {
-                const tplLabel = document.createElement('label');
-                tplLabel.className = 'checklist-item';
-                const exCount = (tpl.exercises || []).length;
-                tplLabel.innerHTML = `<input type="checkbox" class="import-check-template" data-idx="${idx}" checked><span>📋 Шаблон:<strong>${tpl.name||'Шаблон без названия'}</strong>(${exCount} упр.)</span>`;
-                frag.appendChild(tplLabel);
-            });
-        }
-
-        if (payload.hasHistory) {
-            const histLabel = document.createElement('label');
-            histLabel.className = 'checklist-item';
-            histLabel.innerHTML = `<input type="checkbox" id="import-check-history" checked><span>⏱️<strong>История тренировок</strong>(${payload.workouts.length} записей)</span>`;
-            frag.appendChild(histLabel);
-        }
-
-        this.els.importOptionsList.appendChild(frag);
-        this.els.importDetectedContainer.classList.remove('d-none');
+        this.importExportModalView.renderDetectedImport(payload);
     }
 }
 
@@ -3695,17 +3914,12 @@ class AppController {
     }
 
     getExportSelection() {
-        const list = this.view.els.exportOptionsList;
-        const includeLibrary = Boolean(list.querySelector('#export-check-library')?.checked);
-        const templateIds = Array.from(list.querySelectorAll('.export-check-template:checked')).map(el => el.dataset.tplId);
-        const includeHistory = Boolean(list.querySelector('#export-check-history')?.checked);
-
-        if (!includeLibrary && templateIds.length === 0 && !includeHistory) {
+        const selection = this.view.importExportModalView.getExportSelection();
+        if (!selection) {
             alert(STRINGS.MESSAGES.ERROR_NO_SELECTION);
             return null;
         }
-
-        return { includeLibrary, templateIds, includeHistory };
+        return selection;
     }
 
     async handleExportCopyAi() {
@@ -3813,22 +4027,14 @@ class AppController {
             return;
         }
 
-        const list = this.view.els.importOptionsList;
-        const importLibrary = Boolean(list.querySelector('#import-check-library')?.checked);
-        const selectedTemplateIndices = Array.from(list.querySelectorAll('.import-check-template:checked')).map(el => parseInt(el.dataset.idx, 10));
-        const importHistory = Boolean(list.querySelector('#import-check-history')?.checked);
-
-        if (!importLibrary && selectedTemplateIndices.length === 0 && !importHistory) {
+        const selection = this.view.importExportModalView.getImportSelection();
+        if (!selection) {
             alert(STRINGS.MESSAGES.ERROR_NO_SELECTION);
             return;
         }
 
         try {
-            const summary = await this.model.executeSelectiveImport({
-                importLibrary,
-                selectedTemplateIndices,
-                importHistory
-            }, this.currentParsedImportPayload);
+            const summary = await this.model.executeSelectiveImport(selection, this.currentParsedImportPayload);
 
             let msg = STRINGS.MESSAGES.IMPORT_SUCCESS;
             const details = [];

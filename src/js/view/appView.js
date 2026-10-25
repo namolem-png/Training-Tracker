@@ -2,6 +2,8 @@ import { WorkoutView } from './workoutView.js';
 import { HistoryView } from './historyView.js';
 import { StatisticsView } from './statisticsView.js';
 import { SettingsView } from './settingsView.js';
+import { ExerciseModalView } from './exerciseModalView.js';
+import { ImportExportModalView } from './importExportModalView.js';
 import { STRINGS } from '../constants/strings.js';
 
 export class AppView {
@@ -10,7 +12,8 @@ export class AppView {
         this.historyView = new HistoryView();
         this.settingsView = new SettingsView();
         this.statisticsView = new StatisticsView();
-        this.addingToLibraryOnly = false;
+        this.exerciseModalView = new ExerciseModalView();
+        this.importExportModalView = new ImportExportModalView();
         
         this.timeContainer = document.getElementById('estimated-time-container');
 
@@ -22,55 +25,26 @@ export class AppView {
             pageTitle: document.getElementById('page-title'),
             btnPrevWorkout: document.getElementById('btn-prev-workout'),
             btnNextWorkout: document.getElementById('btn-next-workout'),
-            btnShowAddEx: document.getElementById('btn-show-add-ex'),
-            btnShowAddLibEx: document.getElementById('btn-show-add-lib-ex'),
-            btnCancelNewEx: document.getElementById('btn-cancel-new-ex'),
-            exLibSelect: document.getElementById('exerciseLibrarySelect'),
-            newExName: document.getElementById('newExName'),
-            newExCat: document.getElementById('newExCat'),
-            newExTarget: document.getElementById('newExTarget'),
-            btnSaveNewEx: document.getElementById('btn-save-new-ex'),
             btnShowTemplates: document.getElementById('btn-show-templates'),
             tplOptionsUi: document.getElementById('template-options-ui'),
             tplSelectionContainer: document.getElementById('template-selection-container'),
             btnCancelTpl: document.getElementById('btn-cancel-template'),
             btnConfirmTpl: document.getElementById('btn-confirm-template'),
-            btnExport: document.getElementById('btn-export-data'),
-            btnImport: document.getElementById('btn-import-data'),
-            
-            // Export Modal
-            modalExport: document.getElementById('modal-export'),
-            btnCloseExportModal: document.getElementById('btn-close-export-modal'),
-            btnExportSelectAll: document.getElementById('btn-export-select-all'),
-            btnExportDeselectAll: document.getElementById('btn-export-deselect-all'),
-            exportOptionsList: document.getElementById('export-options-list'),
-            btnExportCopyAi: document.getElementById('btn-export-copy-ai'),
-            btnExportCopyJson: document.getElementById('btn-export-copy-json'),
-            btnExportDownloadJson: document.getElementById('btn-export-download-json'),
-
-            // Import Modal
-            modalImport: document.getElementById('modal-import'),
-            btnCloseImportModal: document.getElementById('btn-close-import-modal'),
-            importFileInput: document.getElementById('import-file-input'),
-            btnImportTriggerFile: document.getElementById('btn-import-trigger-file'),
-            btnImportPasteClipboard: document.getElementById('btn-import-paste-clipboard'),
-            importJsonTextarea: document.getElementById('import-json-textarea'),
-            btnImportParse: document.getElementById('btn-import-parse'),
-            importDetectedContainer: document.getElementById('import-detected-container'),
-            btnImportSelectAll: document.getElementById('btn-import-select-all'),
-            btnImportDeselectAll: document.getElementById('btn-import-deselect-all'),
-            importOptionsList: document.getElementById('import-options-list'),
-            btnConfirmImportSelected: document.getElementById('btn-confirm-import-selected'),
-
-            addExFormContainer: document.getElementById('add-ex-form-container'),
-            addExFormTitle: document.getElementById('add-ex-form-title'),
-            categorySelectWrapper: document.getElementById('category-select-wrapper'),
-            libSelectWrapper: document.getElementById('library-select-wrapper'),
-            customExFields: document.getElementById('custom-ex-fields'),
-            selectedExTargetInfo: document.getElementById('selected-ex-target-info'),
             tabWorkout: document.getElementById('tab-workout'),
-            tplSelectDropdown: () => document.getElementById('template-select-dropdown')
+            tplSelectDropdown: () => document.getElementById('template-select-dropdown'),
+
+            // Keep child modal elements accessible for backward compatibility
+            ...this.exerciseModalView.els,
+            ...this.importExportModalView.els
         };
+    }
+
+    get addingToLibraryOnly() {
+        return this.exerciseModalView.addingToLibraryOnly;
+    }
+
+    set addingToLibraryOnly(val) {
+        this.exerciseModalView.addingToLibraryOnly = val;
     }
 
     init(controller) {
@@ -80,7 +54,9 @@ export class AppView {
         this.historyView.bindEvents(controller);
         this.settingsView.bindEvents(controller);
         this.statisticsView.bindEvents(controller);
-        this.bindModals(controller);
+        this.exerciseModalView.bindEvents(controller);
+        this.importExportModalView.bindEvents(controller);
+        this.bindWorkoutDraftEvents(controller);
     }
 
     async renderAll(model, statsService) {
@@ -249,285 +225,65 @@ export class AppView {
         }
     }
 
-    
-    bindModals(controller) {
-        this.els.btnShowAddEx.addEventListener('click', () => this.showAddExerciseForm(null, false));
-        this.els.btnShowAddLibEx.addEventListener('click', () => this.showAddExerciseForm(null, true));
-        this.els.btnCancelNewEx.addEventListener('click', () => this.hideAddExerciseForm());
-        
-        this.els.newExCat.addEventListener('change', () => {
-            const catId = this.els.newExCat.value;
-            this.updateExerciseList(controller.model, catId);
-        });
-
-        this.els.exLibSelect.addEventListener('change', () => {
-            const id = this.els.exLibSelect.value;
-            if (id === 'new') {
-                this.els.customExFields.classList.remove('d-none');
-                this.els.selectedExTargetInfo.classList.add('d-none');
-                this.els.newExName.value = '';
-                this.els.newExTarget.value = '';
-                this.els.newExName.focus();
-            } else if (id) {
-                this.els.customExFields.classList.add('d-none');
-                const ex = controller.model.getLibraryExercise(id);
-                if (ex && ex.target) {
-                    this.els.selectedExTargetInfo.textContent = `Цель: ${ex.target}`;
-                    this.els.selectedExTargetInfo.classList.remove('d-none');
-                } else {
-                    this.els.selectedExTargetInfo.classList.add('d-none');
-                }
-            } else {
-                this.els.customExFields.classList.add('d-none');
-                this.els.selectedExTargetInfo.classList.add('d-none');
-            }
-        });
-
-        this.els.btnSaveNewEx.addEventListener('click', () => controller.handleSaveNewExercise(this.addingToLibraryOnly));
-
-        this.els.btnShowTemplates.addEventListener('click', () => {
-            controller.startNewWorkoutDraft();
-        });
-
-        this.els.btnCancelTpl.addEventListener('click', () => {
-            controller.cancelWorkoutDraft();
-        });
-
-        this.els.btnConfirmTpl.addEventListener('click', () => {
-            controller.confirmWorkoutDraft();
-        });
-
-        // Export Modal Events
-        this.els.btnExport.addEventListener('click', () => controller.handleOpenExport());
-        this.els.btnCloseExportModal.addEventListener('click', () => this.closeExportModal());
-        this.els.modalExport.addEventListener('click', (e) => {
-            if (e.target === this.els.modalExport) this.closeExportModal();
-        });
-        this.els.btnExportSelectAll.addEventListener('click', () => this.setAllExportCheckboxes(true));
-        this.els.btnExportDeselectAll.addEventListener('click', () => this.setAllExportCheckboxes(false));
-        this.els.btnExportCopyAi.addEventListener('click', () => controller.handleExportCopyAi());
-        this.els.btnExportCopyJson.addEventListener('click', () => controller.handleExportCopyJson());
-        this.els.btnExportDownloadJson.addEventListener('click', () => controller.handleExportDownloadJson());
-
-        // Import Modal Events
-        this.els.btnImport.addEventListener('click', () => controller.handleOpenImport());
-        this.els.btnCloseImportModal.addEventListener('click', () => this.closeImportModal());
-        this.els.modalImport.addEventListener('click', (e) => {
-            if (e.target === this.els.modalImport) this.closeImportModal();
-        });
-        this.els.btnImportTriggerFile.addEventListener('click', () => this.els.importFileInput.click());
-        this.els.importFileInput.addEventListener('change', (e) => controller.handleImportFileSelected(e));
-        this.els.btnImportPasteClipboard.addEventListener('click', () => controller.handleImportPasteClipboard());
-        this.els.btnImportParse.addEventListener('click', () => controller.handleParseImportText());
-        this.els.btnImportSelectAll.addEventListener('click', () => this.setAllImportCheckboxes(true));
-        this.els.btnImportDeselectAll.addEventListener('click', () => this.setAllImportCheckboxes(false));
-        this.els.btnConfirmImportSelected.addEventListener('click', () => controller.handleConfirmImportSelected());
-    }
-
-    updateExerciseList(model, catId) {
-        const libSel = this.els.exLibSelect;
-        if (!catId) {
-            libSel.innerHTML = '<option value="" disabled selected>-- Сначала выберите категорию --</option>';
-            libSel.disabled = true;
-            this.els.customExFields.classList.add('d-none');
-            this.els.selectedExTargetInfo.classList.add('d-none');
-            return;
+    bindWorkoutDraftEvents(controller) {
+        if (this.els.btnShowTemplates) {
+            this.els.btnShowTemplates.addEventListener('click', () => {
+                controller.startNewWorkoutDraft();
+            });
         }
-
-        libSel.disabled = false;
-        const filtered = model.exercises
-            .filter(e => e.categoryId === catId)
-            .sort((a, b) => a.name.localeCompare(b.name));
-
-        if (filtered.length === 0) {
-            libSel.innerHTML = '<option value="new" selected>+ Новое упражнение (вручную)</option>';
-            this.els.customExFields.classList.remove('d-none');
-            this.els.selectedExTargetInfo.classList.add('d-none');
-            this.els.newExName.value = '';
-            this.els.newExTarget.value = '';
-        } else {
-            libSel.innerHTML = '<option value="" disabled selected>-- Выберите упражнение --</option>' + 
-                filtered.map(e => `<option value="${e.id}">${e.name}</option>`).join('') + 
-                '<option value="new">+ Новое упражнение (вручную)</option>';
-            this.els.customExFields.classList.add('d-none');
-            this.els.selectedExTargetInfo.classList.add('d-none');
+        if (this.els.btnCancelTpl) {
+            this.els.btnCancelTpl.addEventListener('click', () => {
+                controller.cancelWorkoutDraft();
+            });
+        }
+        if (this.els.btnConfirmTpl) {
+            this.els.btnConfirmTpl.addEventListener('click', () => {
+                controller.confirmWorkoutDraft();
+            });
         }
     }
 
     showAddExerciseForm(categoryId, isLibraryOnly) {
-        this.addingToLibraryOnly = isLibraryOnly;
-        this.els.addExFormContainer.classList.remove('d-none');
-        
-        this.els.btnShowAddEx.classList.toggle('d-none', isLibraryOnly);
-        this.els.btnShowAddLibEx.classList.toggle('d-none', !isLibraryOnly);
-        this.els.libSelectWrapper.classList.toggle('d-none', isLibraryOnly);
-        
-        if (this.els.addExFormTitle) {
-            if (isLibraryOnly) {
-                this.els.addExFormTitle.textContent = 'Новое упражнение в библиотеку';
-            } else if (categoryId && window.app && window.app.model) {
-                this.els.addExFormTitle.textContent = `Добавить в "${window.app.model.getCategoryName(categoryId)}"`;
-            } else {
-                this.els.addExFormTitle.textContent = 'Добавить упражнение';
-            }
-        }
-
-        window.app.populateAddExForm(categoryId, isLibraryOnly);
-        
-        if (categoryId) {
-            this.els.newExCat.value = categoryId;
-            this.els.newExCat.disabled = true;
-        } else {
-            this.els.newExCat.disabled = false;
-        }
-
-        const parentBtn = isLibraryOnly ? this.els.btnShowAddLibEx : this.els.btnShowAddEx;
-        parentBtn.parentNode.insertBefore(this.els.addExFormContainer, parentBtn);
-        this.els.addExFormContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        this.exerciseModalView.show(categoryId, isLibraryOnly, window.app ? window.app.model : null);
     }
 
     hideAddExerciseForm() {
-        this.els.addExFormContainer.classList.add('d-none');
-        this.els.btnShowAddEx.classList.remove('d-none');
-        const libBtn = this.els.btnShowAddLibEx;
-        if(libBtn) libBtn.classList.remove('d-none');
-        this.els.tabWorkout.appendChild(this.els.addExFormContainer);
-        this.els.newExName.value = '';
-        this.els.newExTarget.value = '';
-        this.els.customExFields.classList.add('d-none');
-        this.els.selectedExTargetInfo.classList.add('d-none');
-        this.els.newExCat.disabled = false;
-        this.els.exLibSelect.disabled = false;
+        this.exerciseModalView.hide();
+    }
+
+    updateExerciseList(model, catId) {
+        this.exerciseModalView.updateExerciseList(model, catId);
     }
 
     populateAddExForm(model, catId, isLibraryOnly) {
-        const catSel = this.els.newExCat;
-        
-        if (isLibraryOnly) {
-            catSel.innerHTML = '<option value="" disabled selected>-- Выберите категорию --</option>' +
-                model.categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-            if (catId) catSel.value = catId;
-            this.els.customExFields.classList.remove('d-none');
-            this.els.newExName.value = '';
-            this.els.newExTarget.value = '';
-            this.els.selectedExTargetInfo.classList.add('d-none');
-            return;
-        }
-
-        catSel.innerHTML = '<option value="" disabled selected>-- Выберите категорию --</option>' +
-            model.categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-
-        if (catId) {
-            catSel.value = catId;
-            this.updateExerciseList(model, catId);
-        } else {
-            catSel.value = '';
-            this.updateExerciseList(model, null);
-        }
+        this.exerciseModalView.populateForm(model, catId, isLibraryOnly);
     }
 
     openExportModal(model) {
-        this.els.exportOptionsList.innerHTML = '';
-        const frag = document.createDocumentFragment();
-
-        // 1. Library option
-        const libLabel = document.createElement('label');
-        libLabel.className = 'checklist-item';
-        libLabel.innerHTML = `
-            <input type="checkbox" id="export-check-library" checked>
-            <span>📚 <strong>Каталог упражнений</strong> (${model.exercises.length} упр., ${model.categories.length} кат.)</span>
-        `;
-        frag.appendChild(libLabel);
-
-        // 2. Templates
-        if (model.templates.length > 0) {
-            model.templates.forEach(tpl => {
-                const tplLabel = document.createElement('label');
-                tplLabel.className = 'checklist-item';
-                tplLabel.innerHTML = `
-                    <input type="checkbox" class="export-check-template" data-tpl-id="${tpl.id}" checked>
-                    <span>📋 Шаблон: <strong>${tpl.name}</strong> (${tpl.exercises.length} упр.)</span>
-                `;
-                frag.appendChild(tplLabel);
-            });
-        }
-
-        // 3. History
-        const histLabel = document.createElement('label');
-        histLabel.className = 'checklist-item';
-        histLabel.innerHTML = `
-            <input type="checkbox" id="export-check-history" checked>
-            <span>⏱️ <strong>История тренировок</strong> (все сохраненные записи)</span>
-        `;
-        frag.appendChild(histLabel);
-
-        this.els.exportOptionsList.appendChild(frag);
-        this.els.modalExport.classList.remove('d-none');
+        this.importExportModalView.openExportModal(model);
     }
 
     closeExportModal() {
-        this.els.modalExport.classList.add('d-none');
+        this.importExportModalView.closeExportModal();
     }
 
     setAllExportCheckboxes(checked) {
-        const checkboxes = this.els.exportOptionsList.querySelectorAll('input[type="checkbox"]');
-        checkboxes.forEach(cb => cb.checked = checked);
+        this.importExportModalView.setAllExportCheckboxes(checked);
     }
 
     openImportModal() {
-        this.els.importJsonTextarea.value = '';
-        this.els.importDetectedContainer.classList.add('d-none');
-        this.els.importOptionsList.innerHTML = '';
-        this.els.modalImport.classList.remove('d-none');
+        this.importExportModalView.openImportModal();
     }
 
     closeImportModal() {
-        this.els.modalImport.classList.add('d-none');
+        this.importExportModalView.closeImportModal();
     }
 
     setAllImportCheckboxes(checked) {
-        const checkboxes = this.els.importOptionsList.querySelectorAll('input[type="checkbox"]');
-        checkboxes.forEach(cb => cb.checked = checked);
+        this.importExportModalView.setAllImportCheckboxes(checked);
     }
 
     renderDetectedImport(payload) {
-        this.els.importOptionsList.innerHTML = '';
-        const frag = document.createDocumentFragment();
-
-        if (payload.hasLibrary) {
-            const libLabel = document.createElement('label');
-            libLabel.className = 'checklist-item';
-            libLabel.innerHTML = `
-                <input type="checkbox" id="import-check-library" checked>
-                <span>📚 <strong>Каталог упражнений</strong> (${payload.exercises.length} упр., ${payload.categories.length} кат.)</span>
-            `;
-            frag.appendChild(libLabel);
-        }
-
-        if (payload.hasTemplates) {
-            payload.templates.forEach((tpl, idx) => {
-                const tplLabel = document.createElement('label');
-                tplLabel.className = 'checklist-item';
-                const exCount = (tpl.exercises || []).length;
-                tplLabel.innerHTML = `
-                    <input type="checkbox" class="import-check-template" data-idx="${idx}" checked>
-                    <span>📋 Шаблон: <strong>${tpl.name || 'Шаблон без названия'}</strong> (${exCount} упр.)</span>
-                `;
-                frag.appendChild(tplLabel);
-            });
-        }
-
-        if (payload.hasHistory) {
-            const histLabel = document.createElement('label');
-            histLabel.className = 'checklist-item';
-            histLabel.innerHTML = `
-                <input type="checkbox" id="import-check-history" checked>
-                <span>⏱️ <strong>История тренировок</strong> (${payload.workouts.length} записей)</span>
-            `;
-            frag.appendChild(histLabel);
-        }
-
-        this.els.importOptionsList.appendChild(frag);
-        this.els.importDetectedContainer.classList.remove('d-none');
+        this.importExportModalView.renderDetectedImport(payload);
     }
 }
