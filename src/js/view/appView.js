@@ -38,7 +38,11 @@ export class AppView {
             btnImport: document.getElementById('btn-import-data'),
             fileInput: document.getElementById('fileInput'),
             addExFormContainer: document.getElementById('add-ex-form-container'),
+            addExFormTitle: document.getElementById('add-ex-form-title'),
+            categorySelectWrapper: document.getElementById('category-select-wrapper'),
             libSelectWrapper: document.getElementById('library-select-wrapper'),
+            customExFields: document.getElementById('custom-ex-fields'),
+            selectedExTargetInfo: document.getElementById('selected-ex-target-info'),
             tabWorkout: document.getElementById('tab-workout'),
             tplSelectDropdown: () => document.getElementById('template-select-dropdown')
         };
@@ -160,15 +164,31 @@ export class AppView {
         this.els.btnShowAddLibEx.addEventListener('click', () => this.showAddExerciseForm(null, true));
         this.els.btnCancelNewEx.addEventListener('click', () => this.hideAddExerciseForm());
         
-        this.els.exLibSelect.addEventListener('change', (e) => {
-            const id = e.target.value;
+        this.els.newExCat.addEventListener('change', () => {
+            const catId = this.els.newExCat.value;
+            this.updateExerciseList(controller.model, catId);
+        });
+
+        this.els.exLibSelect.addEventListener('change', () => {
+            const id = this.els.exLibSelect.value;
             if (id === 'new') {
-                this.els.newExName.value = ''; this.els.newExTarget.value = '';
-                this.els.newExName.disabled = false; this.els.newExCat.disabled = false; this.els.newExTarget.disabled = false;
-            } else {
+                this.els.customExFields.classList.remove('d-none');
+                this.els.selectedExTargetInfo.classList.add('d-none');
+                this.els.newExName.value = '';
+                this.els.newExTarget.value = '';
+                this.els.newExName.focus();
+            } else if (id) {
+                this.els.customExFields.classList.add('d-none');
                 const ex = controller.model.getLibraryExercise(id);
-                this.els.newExName.value = ex.name; this.els.newExCat.value = ex.categoryId; this.els.newExTarget.value = ex.target;
-                this.els.newExName.disabled = true; this.els.newExCat.disabled = true; this.els.newExTarget.disabled = true;
+                if (ex && ex.target) {
+                    this.els.selectedExTargetInfo.textContent = `Цель: ${ex.target}`;
+                    this.els.selectedExTargetInfo.classList.remove('d-none');
+                } else {
+                    this.els.selectedExTargetInfo.classList.add('d-none');
+                }
+            } else {
+                this.els.customExFields.classList.add('d-none');
+                this.els.selectedExTargetInfo.classList.add('d-none');
             }
         });
 
@@ -203,6 +223,36 @@ export class AppView {
         this.els.fileInput.addEventListener('change', (e) => controller.handleImport(e));
     }
 
+    updateExerciseList(model, catId) {
+        const libSel = this.els.exLibSelect;
+        if (!catId) {
+            libSel.innerHTML = '<option value="" disabled selected>-- Сначала выберите категорию --</option>';
+            libSel.disabled = true;
+            this.els.customExFields.classList.add('d-none');
+            this.els.selectedExTargetInfo.classList.add('d-none');
+            return;
+        }
+
+        libSel.disabled = false;
+        const filtered = model.exercises
+            .filter(e => e.categoryId === catId)
+            .sort((a, b) => a.name.localeCompare(b.name));
+
+        if (filtered.length === 0) {
+            libSel.innerHTML = '<option value="new" selected>+ Новое упражнение (вручную)</option>';
+            this.els.customExFields.classList.remove('d-none');
+            this.els.selectedExTargetInfo.classList.add('d-none');
+            this.els.newExName.value = '';
+            this.els.newExTarget.value = '';
+        } else {
+            libSel.innerHTML = '<option value="" disabled selected>-- Выберите упражнение --</option>' + 
+                filtered.map(e => `<option value="${e.id}">${e.name}</option>`).join('') + 
+                '<option value="new">+ Новое упражнение (вручную)</option>';
+            this.els.customExFields.classList.add('d-none');
+            this.els.selectedExTargetInfo.classList.add('d-none');
+        }
+    }
+
     showAddExerciseForm(categoryId, isLibraryOnly) {
         this.addingToLibraryOnly = isLibraryOnly;
         this.els.addExFormContainer.classList.remove('d-none');
@@ -211,6 +261,16 @@ export class AppView {
         this.els.btnShowAddLibEx.classList.toggle('d-none', !isLibraryOnly);
         this.els.libSelectWrapper.classList.toggle('d-none', isLibraryOnly);
         
+        if (this.els.addExFormTitle) {
+            if (isLibraryOnly) {
+                this.els.addExFormTitle.textContent = 'Новое упражнение в библиотеку';
+            } else if (categoryId && window.app && window.app.model) {
+                this.els.addExFormTitle.textContent = `Добавить в "${window.app.model.getCategoryName(categoryId)}"`;
+            } else {
+                this.els.addExFormTitle.textContent = 'Добавить упражнение';
+            }
+        }
+
         window.app.populateAddExForm(categoryId, isLibraryOnly);
         
         if (categoryId) {
@@ -233,22 +293,35 @@ export class AppView {
         this.els.tabWorkout.appendChild(this.els.addExFormContainer);
         this.els.newExName.value = '';
         this.els.newExTarget.value = '';
+        this.els.customExFields.classList.add('d-none');
+        this.els.selectedExTargetInfo.classList.add('d-none');
+        this.els.newExCat.disabled = false;
+        this.els.exLibSelect.disabled = false;
     }
 
     populateAddExForm(model, catId, isLibraryOnly) {
-        const libSel = this.els.exLibSelect;
         const catSel = this.els.newExCat;
         
-        libSel.innerHTML = '<option value="new">-- Новое (вручную) --</option>' + 
-            [...model.exercises]
-            .filter(e => !catId || e.categoryId === catId)
-            .sort((a, b) => a.name.localeCompare(b.name))
-            .map(e => `<option value="${e.id}">${e.name} (${model.getCategoryName(e.categoryId)})</option>`).join('');
-            
-        catSel.innerHTML = model.categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-        
-        if (!isLibraryOnly) libSel.value = 'new';
-        catSel.value = catId || (model.categories[0] ? model.categories[0].id : '');
-        libSel.dispatchEvent(new Event('change'));
+        if (isLibraryOnly) {
+            catSel.innerHTML = '<option value="" disabled selected>-- Выберите категорию --</option>' +
+                model.categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            if (catId) catSel.value = catId;
+            this.els.customExFields.classList.remove('d-none');
+            this.els.newExName.value = '';
+            this.els.newExTarget.value = '';
+            this.els.selectedExTargetInfo.classList.add('d-none');
+            return;
+        }
+
+        catSel.innerHTML = '<option value="" disabled selected>-- Выберите категорию --</option>' +
+            model.categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+
+        if (catId) {
+            catSel.value = catId;
+            this.updateExerciseList(model, catId);
+        } else {
+            catSel.value = '';
+            this.updateExerciseList(model, null);
+        }
     }
 }

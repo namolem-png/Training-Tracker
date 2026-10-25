@@ -46,6 +46,8 @@ export const STRINGS = {
         ERROR_IMPORT: 'Ошибка импорта',
         ERROR_NO_WEIGHT_REPS: 'Введите вес и повторения',
         ERROR_NO_NAME: 'Введите название',
+        ERROR_NO_CATEGORY: 'Выберите категорию',
+        ERROR_NO_EXERCISE: 'Выберите упражнение',
         ERROR_NO_DATA_EXPORT: 'Нет данных для экспорта',
         ERROR_CATEGORY_EXISTS: 'Такая категория уже есть!',
         ALERT_NO_MORE_WORKOUTS: 'Больше нет сохраненных тренировок.',

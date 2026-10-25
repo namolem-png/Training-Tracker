@@ -197,18 +197,33 @@ export class AppController {
     }
 
     async handleSaveNewExercise(isLibraryOnly) {
+        if (isLibraryOnly) {
+            const catId = this.view.els.newExCat.value;
+            if (!catId) return alert(STRINGS.MESSAGES.ERROR_NO_CATEGORY || 'Выберите категорию');
+            const name = this.view.els.newExName.value.trim();
+            if (!name) return alert(STRINGS.MESSAGES.ERROR_NO_NAME);
+            const target = this.view.els.newExTarget.value.trim();
+            await this.model.addLibraryExercise(name, catId, target);
+            this.view.hideAddExerciseForm();
+            await this.view.renderAll(this.model, this.statsService);
+            return;
+        }
+
+        const catId = this.view.els.newExCat.value;
+        if (!catId) return alert(STRINGS.MESSAGES.ERROR_NO_CATEGORY || 'Выберите категорию');
+
         const libId = this.view.els.exLibSelect.value;
+        if (!libId) return alert(STRINGS.MESSAGES.ERROR_NO_EXERCISE || 'Выберите упражнение');
+
         let exerciseId = libId;
-
         if (libId === 'new') {
-            const name = this.view.els.newExName.value;
-            if(!name) return alert(STRINGS.MESSAGES.ERROR_NO_NAME);
-            exerciseId = await this.model.addLibraryExercise(name, this.view.els.newExCat.value, this.view.els.newExTarget.value);
+            const name = this.view.els.newExName.value.trim();
+            if (!name) return alert(STRINGS.MESSAGES.ERROR_NO_NAME);
+            const target = this.view.els.newExTarget.value.trim();
+            exerciseId = await this.model.addLibraryExercise(name, catId, target);
         }
 
-        if (!isLibraryOnly) {
-            await this.model.addExerciseToWorkout(exerciseId);
-        }
+        await this.model.addExerciseToWorkout(exerciseId);
         this.view.hideAddExerciseForm();
         await this.view.renderAll(this.model, this.statsService);
     }

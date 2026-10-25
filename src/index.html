@@ -53,14 +53,22 @@
         <div id="workout-list"></div>
 
         <div id="add-ex-form-container" class="add-ex-container d-none">
-            <h3 class="mt-0 mb-15">Новое упражнение</h3>
-            <div id="library-select-wrapper">
-                <label class="stat-label-small">Выбрать из списка или ввести новое:</label>
-                <select id="exerciseLibrarySelect" class="mb-15"></select>
+            <h3 class="mt-0 mb-15" id="add-ex-form-title">Добавить упражнение</h3>
+            <div id="category-select-wrapper">
+                <label class="stat-label-small" for="newExCat">Категория / Группа мышц:</label>
+                <select id="newExCat"></select>
             </div>
-            <input type="text" id="newExName" placeholder="Название (например, Отжимания)">
-            <select id="newExCat"></select>
-            <input type="text" id="newExTarget" placeholder="Цель (например, 3 x 10 повт.)">
+            <div id="library-select-wrapper">
+                <label class="stat-label-small" for="exerciseLibrarySelect">Упражнение:</label>
+                <select id="exerciseLibrarySelect"></select>
+                <div id="selected-ex-target-info" class="d-none"></div>
+            </div>
+            <div id="custom-ex-fields" class="d-none">
+                <label class="stat-label-small" for="newExName">Название:</label>
+                <input type="text" id="newExName" placeholder="Название (например, Отжимания)">
+                <label class="stat-label-small" for="newExTarget">Цель:</label>
+                <input type="text" id="newExTarget" placeholder="Цель (например, 3 x 10 повт.)">
+            </div>
             
             <div class="d-flex gap-10">
                 <button id="btn-save-new-ex" class="btn-confirm">Добавить</button>

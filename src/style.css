@@ -381,15 +381,34 @@ body {
     border: 2px solid var(--secondary);
 }
 
+.add-ex-container label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 13px;
+    color: var(--text-muted);
+}
+
 .add-ex-container input, .add-ex-container select {
     width: 100%;
     padding: 10px;
-    margin-bottom: 10px;
+    margin-bottom: 12px;
     border: 1px solid var(--border);
     border-radius: 5px;
     font-size: 14px;
 }
 .add-ex-container select { background-color: white; }
+.add-ex-container select:disabled, .add-ex-container input:disabled {
+    background-color: #f3f4f6;
+    cursor: not-allowed;
+    opacity: 0.8;
+}
+#selected-ex-target-info {
+    font-size: 13px;
+    color: var(--secondary);
+    margin-top: -4px;
+    margin-bottom: 12px;
+    font-weight: 500;
+}
 
 .history-card {
     background-color: var(--card-bg);
