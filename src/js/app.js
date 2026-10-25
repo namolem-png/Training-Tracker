@@ -13,6 +13,8 @@ export class AppController {
         this.view = view;
         this.statsService = new StatisticsService(model);
         this.currentParsedImportPayload = null;
+        this.isDraftMode = false;
+        this.previousWorkoutIdBeforeDraft = null;
     }
 
     async init() {
@@ -58,8 +60,15 @@ export class AppController {
             }
             hash = 'workout';
         }
+        if (hash !== 'workout' && this.isDraftMode) {
+            await this.cancelWorkoutDraft();
+        }
         this.view.switchTab(hash);
-        await this.view.renderAll(this.model, this.statsService);
+        if (hash === 'workout' && this.isDraftMode) {
+            this.view.showWorkoutDraft(this.model);
+        } else {
+            await this.view.renderAll(this.model, this.statsService);
+        }
     }
 
     async handleToggleComplete(exIndex, cardElement) {
@@ -130,6 +139,16 @@ export class AppController {
     }
 
     async handleHeaderChange() {
+        if (this.isDraftMode) {
+            const d = this.view.workoutView.dateInput.value;
+            if (d) {
+                const dayIndex = new Date(d).getDay();
+                if (!isNaN(dayIndex)) {
+                    this.view.workoutView.dayInput.value = STRINGS.COMMON.DAYS[dayIndex];
+                }
+            }
+            return;
+        }
         const d = this.view.workoutView.dateInput.value;
         const day = this.view.workoutView.dayInput.value;
         await this.model.updateWorkoutHeader(d, day);
@@ -137,6 +156,7 @@ export class AppController {
     }
 
     async navigateWorkout(dir) {
+        if (this.isDraftMode) return;
         const nextId = await this.model.getAdjacentWorkoutId(this.model.activeWorkoutId, dir);
         if (nextId) {
             await this.model.loadActiveWorkout(nextId);
@@ -144,12 +164,70 @@ export class AppController {
         }
     }
 
+    async handleNextWorkout() {
+        if (this.isDraftMode) return;
+        const nextId = await this.model.getAdjacentWorkoutId(this.model.activeWorkoutId, 1);
+        if (nextId) {
+            await this.model.loadActiveWorkout(nextId);
+            await this.view.renderAll(this.model, this.statsService);
+        } else if (this.model.activeWorkoutId) {
+            this.startNewWorkoutDraft();
+        }
+    }
+
+    startNewWorkoutDraft() {
+        this.isDraftMode = true;
+        this.previousWorkoutIdBeforeDraft = this.model.activeWorkoutId;
+
+        if (window.location.hash !== '#workout') {
+            window.location.hash = 'workout';
+        } else {
+            this.view.switchTab('workout');
+            this.view.showWorkoutDraft(this.model);
+        }
+    }
+
+    async cancelWorkoutDraft() {
+        if (!this.isDraftMode) return;
+        this.isDraftMode = false;
+        this.view.hideWorkoutDraft();
+        if (this.previousWorkoutIdBeforeDraft) {
+            await this.model.loadActiveWorkout(this.previousWorkoutIdBeforeDraft);
+        }
+        this.previousWorkoutIdBeforeDraft = null;
+        await this.view.renderAll(this.model, this.statsService);
+    }
+
+    async confirmWorkoutDraft() {
+        if (!this.isDraftMode) return;
+        const sel = this.view.els.tplSelectDropdown();
+        const val = sel ? sel.value : 'empty';
+        const tplId = (val && val !== 'empty') ? val : null;
+        const customDate = this.view.workoutView.dateInput.value;
+        const customDay = this.view.workoutView.dayInput.value;
+
+        this.isDraftMode = false;
+        this.previousWorkoutIdBeforeDraft = null;
+        this.view.hideWorkoutDraft();
+
+        await this.model.addWorkout(tplId, customDate, customDay);
+        await this.view.renderAll(this.model, this.statsService);
+    }
+
     async handleStartWorkout(templateId) {
+        this.isDraftMode = false;
+        this.previousWorkoutIdBeforeDraft = null;
+        this.view.hideWorkoutDraft();
         await this.model.addWorkout(templateId);
         window.location.hash = 'workout';
     }
 
     async handleLoadWorkout(id) {
+        if (this.isDraftMode) {
+            this.isDraftMode = false;
+            this.previousWorkoutIdBeforeDraft = null;
+            this.view.hideWorkoutDraft();
+        }
         await this.model.loadActiveWorkout(id);
         window.location.hash = 'workout';
     }

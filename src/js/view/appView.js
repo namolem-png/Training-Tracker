@@ -2,6 +2,7 @@ import { WorkoutView } from './workoutView.js';
 import { HistoryView } from './historyView.js';
 import { StatisticsView } from './statisticsView.js';
 import { SettingsView } from './settingsView.js';
+import { STRINGS } from '../constants/strings.js';
 
 export class AppView {
     constructor() {
@@ -73,6 +74,7 @@ export class AppView {
     }
 
     init(controller) {
+        this.controller = controller;
         this.bindNavigation(controller);
         this.workoutView.bindEvents(controller);
         this.historyView.bindEvents(controller);
@@ -128,16 +130,81 @@ export class AppView {
     }
 
     async updateNavButtons(model) {
+        if (this.controller && this.controller.isDraftMode) {
+            if (this.els.btnPrevWorkout) this.els.btnPrevWorkout.disabled = true;
+            if (this.els.btnNextWorkout) {
+                this.els.btnNextWorkout.disabled = true;
+                this.els.btnNextWorkout.textContent = '+';
+                this.els.btnNextWorkout.title = STRINGS.WORKOUT.TOOLTIP_NEW;
+            }
+            return;
+        }
+
         if (!model.activeWorkoutId) {
             if (this.els.btnPrevWorkout) this.els.btnPrevWorkout.disabled = true;
-            if (this.els.btnNextWorkout) this.els.btnNextWorkout.disabled = true;
+            if (this.els.btnNextWorkout) {
+                this.els.btnNextWorkout.disabled = true;
+                this.els.btnNextWorkout.textContent = '▶';
+                this.els.btnNextWorkout.title = STRINGS.WORKOUT.TOOLTIP_NEXT;
+            }
             return;
         }
         const hasPrev = await model.getAdjacentWorkoutId(model.activeWorkoutId, -1);
         const hasNext = await model.getAdjacentWorkoutId(model.activeWorkoutId, 1);
         
         if (this.els.btnPrevWorkout) this.els.btnPrevWorkout.disabled = !hasPrev;
-        if (this.els.btnNextWorkout) this.els.btnNextWorkout.disabled = !hasNext;
+        if (this.els.btnNextWorkout) {
+            if (!hasNext) {
+                this.els.btnNextWorkout.disabled = false;
+                this.els.btnNextWorkout.textContent = '+';
+                this.els.btnNextWorkout.title = STRINGS.WORKOUT.TOOLTIP_NEW;
+            } else {
+                this.els.btnNextWorkout.disabled = false;
+                this.els.btnNextWorkout.textContent = '▶';
+                this.els.btnNextWorkout.title = STRINGS.WORKOUT.TOOLTIP_NEXT;
+            }
+        }
+    }
+
+    showWorkoutDraft(model) {
+        this.workoutView.titleEl.textContent = STRINGS.WORKOUT.TITLE_NEW_WORKOUT;
+        
+        const today = new Date();
+        this.workoutView.dateInput.value = today.toISOString().split('T')[0];
+        this.workoutView.dayInput.value = STRINGS.COMMON.DAYS[today.getDay()];
+        
+        this.workoutView.container.innerHTML = '';
+        
+        this.hideAddExerciseForm();
+        if (this.els.btnShowAddEx) {
+            this.els.btnShowAddEx.classList.add('d-none');
+        }
+
+        if (this.els.btnPrevWorkout) this.els.btnPrevWorkout.disabled = true;
+        if (this.els.btnNextWorkout) {
+            this.els.btnNextWorkout.disabled = true;
+            this.els.btnNextWorkout.textContent = '+';
+            this.els.btnNextWorkout.title = STRINGS.WORKOUT.TOOLTIP_NEW;
+        }
+
+        let optionsHtml = `<option value="empty">${STRINGS.WORKOUT.EMPTY_WORKOUT_OPTION}</option>`;
+        if (model.templates && model.templates.length > 0) {
+            optionsHtml += model.templates.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+        }
+        this.els.tplOptionsUi.innerHTML = `<select id="template-select-dropdown" style="width:100%; padding:10px;">${optionsHtml}</select>`;
+        this.els.tplSelectionContainer.classList.remove('d-none');
+
+        this.els.mainNavbar.style.setProperty('--progress', '0%');
+        if (this.timeContainer) {
+            this.timeContainer.textContent = '⏱️ 00:00';
+        }
+    }
+
+    hideWorkoutDraft() {
+        this.els.tplSelectionContainer.classList.add('d-none');
+        if (this.els.btnShowAddEx) {
+            this.els.btnShowAddEx.classList.remove('d-none');
+        }
     }
 
     bindNavigation(controller) {
@@ -219,27 +286,15 @@ export class AppView {
         this.els.btnSaveNewEx.addEventListener('click', () => controller.handleSaveNewExercise(this.addingToLibraryOnly));
 
         this.els.btnShowTemplates.addEventListener('click', () => {
-            if (controller.model.templates.length === 0) {
-                this.els.tplOptionsUi.innerHTML = '<p>Нет шаблонов.</p>';
-            } else {
-                this.els.tplOptionsUi.innerHTML = '<select id="template-select-dropdown" style="width:100%; padding:10px;"><option value="empty">Пустая тренировка</option>' + 
-                    controller.model.templates.map(t => `<option value="${t.id}">${t.name}</option>`).join('') + '</select>';
-            }
-            this.els.tplSelectionContainer.classList.remove('d-none');
-            this.els.btnShowTemplates.classList.add('d-none');
+            controller.startNewWorkoutDraft();
         });
 
         this.els.btnCancelTpl.addEventListener('click', () => {
-            this.els.tplSelectionContainer.classList.add('d-none');
-            this.els.btnShowTemplates.classList.remove('d-none');
+            controller.cancelWorkoutDraft();
         });
 
         this.els.btnConfirmTpl.addEventListener('click', () => {
-            const sel = this.els.tplSelectDropdown();
-            const val = sel ? sel.value : 'empty';
-            controller.handleStartWorkout(val === 'empty' ? null : val);
-            this.els.tplSelectionContainer.classList.add('d-none');
-            this.els.btnShowTemplates.classList.remove('d-none');
+            controller.confirmWorkoutDraft();
         });
 
         // Export Modal Events

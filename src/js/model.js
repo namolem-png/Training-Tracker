@@ -164,7 +164,7 @@ export class AppModel {
         return catOrder.filter(id => grouped[id]).flatMap(id => grouped[id]);
     }
 
-    async addWorkout(templateId = null) {
+    async addWorkout(templateId = null, customDate = null, customDay = null) {
         const today = new Date();
         const days = STRINGS.COMMON.DAYS;
         let initialExercises = [];
@@ -181,13 +181,16 @@ export class AppModel {
             }
         }
 
+        const date = customDate || today.toISOString().split('T')[0];
+        const dayOfWeek = customDay || days[today.getDay()];
+
         const newWorkout = {
             id: Date.now().toString(),
-            date: today.toISOString().split('T')[0],
-            dayOfWeek: days[today.getDay()],
+            date: date,
+            dayOfWeek: dayOfWeek,
             exercises: this.reorderExercisesByCategory(initialExercises),
             templateId: templateId
-                };
+        };
 
         this.activeWorkout = newWorkout;
         await this.saveActiveWorkoutId(newWorkout.id);

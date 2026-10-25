@@ -1,3 +1,5 @@
+import { STRINGS } from '../constants/strings.js';
+
 export class WorkoutView {
     constructor() {
         this.container = document.getElementById('workout-list');
@@ -15,18 +17,18 @@ export class WorkoutView {
         if (!workout) {
             const empty = document.createElement('div');
             empty.className = 'empty-state';
-            empty.textContent = 'Нет активных тренировок. Создайте новую!';
+            empty.textContent = STRINGS.WORKOUT.NO_ACTIVE_WORKOUTS;
             this.container.appendChild(empty);
             this.dateInput.value = '';
             this.dayInput.value = '';
-            this.titleEl.textContent = "План";
+            this.titleEl.textContent = STRINGS.WORKOUT.TITLE_DEFAULT;
             return;
         }
 
         this.dateInput.value = workout.date;
         this.dayInput.value = workout.dayOfWeek;
         
-        let workoutTitle = "План";
+        let workoutTitle = STRINGS.WORKOUT.TITLE_DEFAULT;
         if (workout.templateId) {
             const template = model.templates.find(t => t.id === workout.templateId);
             if (template) workoutTitle = template.name;
@@ -185,6 +187,6 @@ export class WorkoutView {
         this.dateInput.addEventListener('change', () => controller.handleHeaderChange());
         this.dayInput.addEventListener('change', () => controller.handleHeaderChange());
         this.btnPrev.addEventListener('click', () => controller.navigateWorkout(-1));
-        this.btnNext.addEventListener('click', () => controller.navigateWorkout(1));
+        this.btnNext.addEventListener('click', () => controller.handleNextWorkout());
     }
 }

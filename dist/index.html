@@ -59,6 +59,17 @@
             </div>
         </div>
 
+
+
+        <div id="template-selection-container" class="add-ex-container border-primary d-none">
+            <h3 class="mt-0 mb-15">Выберите шаблон</h3>
+            <div id="template-options-ui"></div>
+            <div class="d-flex gap-10 mt-15">
+                <button id="btn-confirm-template" class="btn-confirm">Начать</button>
+                <button id="btn-cancel-template" class="btn-cancel">Отмена</button>
+            </div>
+        </div>
+
         <div id="workout-list"></div>
 
         <div id="add-ex-form-container" class="add-ex-container d-none">
@@ -94,14 +105,14 @@
             <button id="btn-show-templates" class="action-btn btn-new-workout">+ Начать новую тренировку</button>
         </div>
         
-        <div id="template-selection-container" class="add-ex-container border-primary d-none">
-            <h3 class="mt-0 mb-15">Выберите шаблон</h3>
-            <div id="template-options-ui"></div>
-            <div class="d-flex gap-10 mt-15">
-                <button id="btn-confirm-template" class="btn-confirm">Начать</button>
-                <button id="btn-cancel-template" class="btn-cancel">Отмена</button>
-            </div>
-        </div>
+
+
+
+
+
+
+
+
 
         <div id="calendar-container" class="mt-30"></div>
     </div>
@@ -338,7 +349,7 @@
 </div>
 
 <script>
-const STRINGS={ COMMON:{ DAYS:['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'],NO_DATA_CHART:'Нет данных для отображения графика',NO_DATA_SIMPLE:'Нет данных',UNITS:{ SETS:'подходов',WEEK_FORMS:['неделю','недели','недель']} },MODEL:{ DEFAULT_CATEGORY:'Без категории',DELETED_EXERCISE:'Удалено',TARGET_NONE:'-' },STATISTICS:{ STREAK_TEMPLATE:'🌟 Вы тренируетесь {n} {word} подряд без пропусков!',CHART_TITLES:{ PROGRESS:'Прогресс по упражнению за {period}',VOLUME:'Объем тренировок за {period}',BALANCE_30:'Нагрузка за {period}(подходы)',WEEKLY_VOLUME:'Объем за 7 дней' },HELP:{ PROGRESS:{ max:`📊 Максимальный поднятый вес\n\n⏱️ Что показывает: Пиковый абсолютный вес, который вы смогли поднять в выбранном упражнении хотя бы на 1 повторение в рамках конкретной тренировки.\n\n💡 Зачем это нужно: Прямой маркер вашей максимальной механической силы. График наглядно демонстрирует преодоление силовых плато. Если линия идет вверх — вы становитесь сильнее.\n\n🎯 Как использовать: Идеально подходит для оценки прогресса в тяжелых базовых движениях с низким количеством повторений (1–5), где прирост веса на штанге является главной целью.`,'1rm':`📊 Расчетный одноповторный максимум (1RM)\n\n⏱️ Что показывает: Теоретический вес, который вы могли бы поднять в этом упражнении ровно на 1 раз, вычисленный на основе ваших многоповторных подходов по классической формуле Эпли: Вес × (1 + Повторения / 30).\n\n💡 Зачем это нужно: Позволяет безопасно оценивать рост вашей пиковой силы без необходимости выполнять опасные для суставов и связок подходы на 1 максимальное повторение. Если вы пожали 80 кг на 10 раз, ваш расчетный 1RM составит около 107 кг.\n\n🎯 Как использовать: Самый объективный индикатор «чистого» силового прогресса. Если вы увеличили количество повторений со старым весом (например, было 60 кг на 8 раз, стало на 12 раз) — этот график покажет рост, в то время как график «Максимального веса» остался бы плоским.`,avg:`📊 Средний рабочий вес\n\n⏱️ Что показывает: Среднее арифметическое значение веса во всех выполненных подходах данного упражнения за одну тренировку (Сумма весов всех подходов / Количество подходов).\n\n💡 Зачем это нужно: Демонстрирует плотность и общее качество вашей работы. Рост этой линии означает, что вы увеличиваете вес не только в одном «рекордном» подходе, а поднимаете планку для всей тренировки целиком.\n\n🎯 Как использовать: Критически важен для отслеживания силовой выносливости. Помогает избегать скрытого регресса, когда первый подход делается с большим весом, а во всех последующих вес резко сбрасывается.` },VOLUME:{ total_tonnage:`📊 Общий тоннаж за тренировку\n\n⏱️ Что показывает: Суммарный вес, поднятый вами за всю тренировку во всех упражнениях и подходах (Вес × Повторения по каждой записи).\n\n💡 Зачем это нужно: Тоннаж — это главный показатель общего тренировочного объема. В бодибилдинге и фитнесе именно долгосрочный рост тренировочного объема (механического напряжения на мышцы) является ключевым стимулом для гипертрофии (роста мышечной массы).\n\n🎯 Как использовать: Следите, чтобы в рамках одного тренировочного цикла (мезоцикла) этот показатель плавно рос от недели к неделе (принцип прогрессивной перегрузки), а в неделю отдыха (делифтинга) — контролируемо снижался.`,cat_tonnage:`📊 Тоннаж по мышечным группам\n\n⏱️ Что показывает: Общий поднятый вес за выбранный период (день/неделя), распределенный и окрашенный по конкретным категориям мышц (Грудь, Спина, Ноги и т.д.).\n\n💡 Зачем это нужно: Наглядно иллюстрирует, на какие именно мышечные группы пришлась основная силовая нагрузка. Из-за разницы в силе мышц (ноги всегда поднимают больше, чем плечи), этот график помогает отслеживать индивидуальный объем работы внутри каждой мышечной группы отдельно.\n\n🎯 Как использовать: Используйте для контроля специализации. Если вы планировали сделать акцент на развитие спины, но на графике доминирует тоннаж ног или груди — это повод скорректировать программу.`,exercise_tonnage:`📊 Тоннаж конкретного упражнения\n\n⏱️ Что показывает: Суммарный объем работы (килограммы × повторения), выполненный исключительно в рамках одного выбранного упражнения за тренировку.\n\n💡 Зачем это нужно: Показывает, насколько интенсивно вы нагружаете целевую мышцу конкретным движением. Это помогает понять, за счет чего растет общий тоннаж тренировки: за счет добавления новых упражнений или за счет качественного прогресса в текущем.\n\n🎯 Как использовать: Отличный маркер для отслеживания прогресса в многоповторных и изолирующих упражнениях (например, подтягивания, приседания), где важен общий стимул.` },BALANCE_PIE:`📊 Распределение нагрузки\n\n⏱️ Что показывает: Процентное соотношение количества выполненных рабочих подходов между различными мышечными группами за месяц.\n\n💡 Зачем это нужно: Помогает оценить гармоничность и сбалансированность вашей тренировочной программы. Защищает от мышечных дисбалансов (например, когда тренировкам груди уделяется 40% времени, а на спину или ноги остается по 10%), что критично для осанки и здоровья суставов.\n\n🎯 Как использовать: Проверьте диаграмму в конце месяца. Для пропорционального развития тела доли крупных мышечных групп (Ноги, Спина, Грудь) должны быть относительно равными и занимать большую часть диаграммы.`,BALANCE_WEEKLY:`📊 Счетчик подходов на группу в неделю\n\n⏱️ Что показывает: Точное количество эффективных рабочих подходов, выполненных на каждую мышечную группу за последние 7 дней.\n\n💡 Зачем это нужно: В современной спортивной науке именно количество подходов в неделю является золотым стандартом измерения объема нагрузки. Для уверенного роста мышц (гипертрофии) научно обоснованная норма составляет от 10 до 20 рабочих подходов на одну группу мышц в неделю.\n\n🎯 Как использовать: Сверяйтесь со счетчиком перед каждой тренировкой. Если показатель по какой-то группе меньше 10 — объем недостаточен для роста; если выше 20–25 — вы рискуете уйти в перетренированность и «мусорный» объем, который не дает пользы.` } },MESSAGES:{ CONFIRM_DELETE_SET:'Удалить подход?',CONFIRM_DELETE_EX:'Удалить упражнение из тренировки?',CONFIRM_DELETE_WORKOUT:'Удалить тренировку?',CONFIRM_DELETE_CATEGORY:'Удалить категорию?',CONFIRM_DELETE_LIB_EX:'Удалить упражнение из библиотеки?',CONFIRM_IMPORT:'Все текущие данные будут удалены. Продолжить?',ERROR_IMPORT:'Ошибка импорта',ERROR_NO_WEIGHT_REPS:'Введите вес и повторения',ERROR_NO_NAME:'Введите название',ERROR_NO_CATEGORY:'Выберите категорию',ERROR_NO_EXERCISE:'Выберите упражнение',ERROR_NO_DATA_EXPORT:'Нет данных для экспорта',ERROR_NO_SELECTION:'Пожалуйста,выберите хотя бы один элемент',ERROR_INVALID_JSON:'Не удалось распознать данные. Проверьте формат JSON или текст ответа ИИ.',ERROR_NOTHING_TO_IMPORT:'В предоставленных данных не найдено подходящих элементов для импорта.',ERROR_CATEGORY_EXISTS:'Такая категория уже есть!',ALERT_NO_MORE_WORKOUTS:'Больше нет сохраненных тренировок.',IMPORT_SUCCESS:'Импорт завершен успешно!',COPIED_TO_CLIPBOARD:'Скопировано в буфер обмена!' },EXPORT_IMPORT:{ MODAL_EXPORT_TITLE:'Экспорт данных',MODAL_IMPORT_TITLE:'Импорт данных',SELECT_ALL:'Выбрать все',DESELECT_ALL:'Снять все',SECTION_LIBRARY:'Каталог упражнений и категории',SECTION_TEMPLATES:'Шаблоны тренировок',SECTION_HISTORY:'История тренировок(все записи)',BTN_COPY_AI:'📋 Скопировать для ИИ',BTN_COPY_JSON:'📋 Скопировать JSON',BTN_DOWNLOAD_JSON:'💾 Скачать JSON',BTN_IMPORT_SELECTED:'Импортировать выбранное',BTN_PASTE_CLIPBOARD:'📋 Вставить из буфера',BTN_CHOOSE_FILE:'📁 Выбрать файл .json',PASTE_PLACEHOLDER:'Вставьте сюда JSON или ответ чата с ИИ(включая markdown ```json)...',
+const STRINGS={ COMMON:{ DAYS:['Воскресенье','Понедельник','Вторник','Среда','Четверг','Пятница','Суббота'],NO_DATA_CHART:'Нет данных для отображения графика',NO_DATA_SIMPLE:'Нет данных',UNITS:{ SETS:'подходов',WEEK_FORMS:['неделю','недели','недель']} },MODEL:{ DEFAULT_CATEGORY:'Без категории',DELETED_EXERCISE:'Удалено',TARGET_NONE:'-' },WORKOUT:{ TITLE_NEW_WORKOUT:'Новая тренировка',TITLE_DEFAULT:'План',TOOLTIP_NEXT:'Следующая тренировка',TOOLTIP_PREV:'Предыдущая тренировка',TOOLTIP_NEW:'Начать новую тренировку',EMPTY_WORKOUT_OPTION:'Пустая тренировка',NO_ACTIVE_WORKOUTS:'Нет активных тренировок. Создайте новую!' },STATISTICS:{ STREAK_TEMPLATE:'🌟 Вы тренируетесь {n} {word} подряд без пропусков!',CHART_TITLES:{ PROGRESS:'Прогресс по упражнению за {period}',VOLUME:'Объем тренировок за {period}',BALANCE_30:'Нагрузка за {period}(подходы)',WEEKLY_VOLUME:'Объем за 7 дней' },HELP:{ PROGRESS:{ max:`📊 Максимальный поднятый вес\n\n⏱️ Что показывает: Пиковый абсолютный вес, который вы смогли поднять в выбранном упражнении хотя бы на 1 повторение в рамках конкретной тренировки.\n\n💡 Зачем это нужно: Прямой маркер вашей максимальной механической силы. График наглядно демонстрирует преодоление силовых плато. Если линия идет вверх — вы становитесь сильнее.\n\n🎯 Как использовать: Идеально подходит для оценки прогресса в тяжелых базовых движениях с низким количеством повторений (1–5), где прирост веса на штанге является главной целью.`,'1rm':`📊 Расчетный одноповторный максимум (1RM)\n\n⏱️ Что показывает: Теоретический вес, который вы могли бы поднять в этом упражнении ровно на 1 раз, вычисленный на основе ваших многоповторных подходов по классической формуле Эпли: Вес × (1 + Повторения / 30).\n\n💡 Зачем это нужно: Позволяет безопасно оценивать рост вашей пиковой силы без необходимости выполнять опасные для суставов и связок подходы на 1 максимальное повторение. Если вы пожали 80 кг на 10 раз, ваш расчетный 1RM составит около 107 кг.\n\n🎯 Как использовать: Самый объективный индикатор «чистого» силового прогресса. Если вы увеличили количество повторений со старым весом (например, было 60 кг на 8 раз, стало на 12 раз) — этот график покажет рост, в то время как график «Максимального веса» остался бы плоским.`,avg:`📊 Средний рабочий вес\n\n⏱️ Что показывает: Среднее арифметическое значение веса во всех выполненных подходах данного упражнения за одну тренировку (Сумма весов всех подходов / Количество подходов).\n\n💡 Зачем это нужно: Демонстрирует плотность и общее качество вашей работы. Рост этой линии означает, что вы увеличиваете вес не только в одном «рекордном» подходе, а поднимаете планку для всей тренировки целиком.\n\n🎯 Как использовать: Критически важен для отслеживания силовой выносливости. Помогает избегать скрытого регресса, когда первый подход делается с большим весом, а во всех последующих вес резко сбрасывается.` },VOLUME:{ total_tonnage:`📊 Общий тоннаж за тренировку\n\n⏱️ Что показывает: Суммарный вес, поднятый вами за всю тренировку во всех упражнениях и подходах (Вес × Повторения по каждой записи).\n\n💡 Зачем это нужно: Тоннаж — это главный показатель общего тренировочного объема. В бодибилдинге и фитнесе именно долгосрочный рост тренировочного объема (механического напряжения на мышцы) является ключевым стимулом для гипертрофии (роста мышечной массы).\n\n🎯 Как использовать: Следите, чтобы в рамках одного тренировочного цикла (мезоцикла) этот показатель плавно рос от недели к неделе (принцип прогрессивной перегрузки), а в неделю отдыха (делифтинга) — контролируемо снижался.`,cat_tonnage:`📊 Тоннаж по мышечным группам\n\n⏱️ Что показывает: Общий поднятый вес за выбранный период (день/неделя), распределенный и окрашенный по конкретным категориям мышц (Грудь, Спина, Ноги и т.д.).\n\n💡 Зачем это нужно: Наглядно иллюстрирует, на какие именно мышечные группы пришлась основная силовая нагрузка. Из-за разницы в силе мышц (ноги всегда поднимают больше, чем плечи), этот график помогает отслеживать индивидуальный объем работы внутри каждой мышечной группы отдельно.\n\n🎯 Как использовать: Используйте для контроля специализации. Если вы планировали сделать акцент на развитие спины, но на графике доминирует тоннаж ног или груди — это повод скорректировать программу.`,exercise_tonnage:`📊 Тоннаж конкретного упражнения\n\n⏱️ Что показывает: Суммарный объем работы (килограммы × повторения), выполненный исключительно в рамках одного выбранного упражнения за тренировку.\n\n💡 Зачем это нужно: Показывает, насколько интенсивно вы нагружаете целевую мышцу конкретным движением. Это помогает понять, за счет чего растет общий тоннаж тренировки: за счет добавления новых упражнений или за счет качественного прогресса в текущем.\n\n🎯 Как использовать: Отличный маркер для отслеживания прогресса в многоповторных и изолирующих упражнениях (например, подтягивания, приседания), где важен общий стимул.` },BALANCE_PIE:`📊 Распределение нагрузки\n\n⏱️ Что показывает: Процентное соотношение количества выполненных рабочих подходов между различными мышечными группами за месяц.\n\n💡 Зачем это нужно: Помогает оценить гармоничность и сбалансированность вашей тренировочной программы. Защищает от мышечных дисбалансов (например, когда тренировкам груди уделяется 40% времени, а на спину или ноги остается по 10%), что критично для осанки и здоровья суставов.\n\n🎯 Как использовать: Проверьте диаграмму в конце месяца. Для пропорционального развития тела доли крупных мышечных групп (Ноги, Спина, Грудь) должны быть относительно равными и занимать большую часть диаграммы.`,BALANCE_WEEKLY:`📊 Счетчик подходов на группу в неделю\n\n⏱️ Что показывает: Точное количество эффективных рабочих подходов, выполненных на каждую мышечную группу за последние 7 дней.\n\n💡 Зачем это нужно: В современной спортивной науке именно количество подходов в неделю является золотым стандартом измерения объема нагрузки. Для уверенного роста мышц (гипертрофии) научно обоснованная норма составляет от 10 до 20 рабочих подходов на одну группу мышц в неделю.\n\n🎯 Как использовать: Сверяйтесь со счетчиком перед каждой тренировкой. Если показатель по какой-то группе меньше 10 — объем недостаточен для роста; если выше 20–25 — вы рискуете уйти в перетренированность и «мусорный» объем, который не дает пользы.` } },MESSAGES:{ CONFIRM_DELETE_SET:'Удалить подход?',CONFIRM_DELETE_EX:'Удалить упражнение из тренировки?',CONFIRM_DELETE_WORKOUT:'Удалить тренировку?',CONFIRM_DELETE_CATEGORY:'Удалить категорию?',CONFIRM_DELETE_LIB_EX:'Удалить упражнение из библиотеки?',CONFIRM_IMPORT:'Все текущие данные будут удалены. Продолжить?',ERROR_IMPORT:'Ошибка импорта',ERROR_NO_WEIGHT_REPS:'Введите вес и повторения',ERROR_NO_NAME:'Введите название',ERROR_NO_CATEGORY:'Выберите категорию',ERROR_NO_EXERCISE:'Выберите упражнение',ERROR_NO_DATA_EXPORT:'Нет данных для экспорта',ERROR_NO_SELECTION:'Пожалуйста,выберите хотя бы один элемент',ERROR_INVALID_JSON:'Не удалось распознать данные. Проверьте формат JSON или текст ответа ИИ.',ERROR_NOTHING_TO_IMPORT:'В предоставленных данных не найдено подходящих элементов для импорта.',ERROR_CATEGORY_EXISTS:'Такая категория уже есть!',ALERT_NO_MORE_WORKOUTS:'Больше нет сохраненных тренировок.',IMPORT_SUCCESS:'Импорт завершен успешно!',COPIED_TO_CLIPBOARD:'Скопировано в буфер обмена!' },EXPORT_IMPORT:{ MODAL_EXPORT_TITLE:'Экспорт данных',MODAL_IMPORT_TITLE:'Импорт данных',SELECT_ALL:'Выбрать все',DESELECT_ALL:'Снять все',SECTION_LIBRARY:'Каталог упражнений и категории',SECTION_TEMPLATES:'Шаблоны тренировок',SECTION_HISTORY:'История тренировок(все записи)',BTN_COPY_AI:'📋 Скопировать для ИИ',BTN_COPY_JSON:'📋 Скопировать JSON',BTN_DOWNLOAD_JSON:'💾 Скачать JSON',BTN_IMPORT_SELECTED:'Импортировать выбранное',BTN_PASTE_CLIPBOARD:'📋 Вставить из буфера',BTN_CHOOSE_FILE:'📁 Выбрать файл .json',PASTE_PLACEHOLDER:'Вставьте сюда JSON или ответ чата с ИИ(включая markdown ```json)...',
         DETECTED_SECTIONS_TITLE: 'Обнаружено в данных для импорта:',
         AI_PROMPT_HEADER: 'Ты — профессиональный фитнес-тренер и методист.',
         AI_PROMPT_TASK: 'Пожалуйста, проанализируй эти данные и составь новый шаблон тренировки (или скорректируй существующие) с учетом моих целей и комментариев ниже:',
@@ -1230,7 +1241,7 @@ class AppModel {
         return catOrder.filter(id => grouped[id]).flatMap(id => grouped[id]);
     }
 
-    async addWorkout(templateId = null) {
+    async addWorkout(templateId = null, customDate = null, customDay = null) {
         const today = new Date();
         const days = STRINGS.COMMON.DAYS;
         let initialExercises = [];
@@ -1249,8 +1260,8 @@ class AppModel {
 
         const newWorkout = {
             id: Date.now().toString(),
-            date: today.toISOString().split('T')[0],
-            dayOfWeek: days[today.getDay()],
+            date: customDate || today.toISOString().split('T')[0],
+            dayOfWeek: customDay || days[today.getDay()],
             exercises: this.reorderExercisesByCategory(initialExercises),
             templateId: templateId
                 };
@@ -1687,18 +1698,18 @@ class WorkoutView {
         if (!workout) {
             const empty = document.createElement('div');
             empty.className = 'empty-state';
-            empty.textContent = 'Нет активных тренировок. Создайте новую!';
+            empty.textContent = STRINGS.WORKOUT.NO_ACTIVE_WORKOUTS;
             this.container.appendChild(empty);
             this.dateInput.value = '';
             this.dayInput.value = '';
-            this.titleEl.textContent = "План";
+            this.titleEl.textContent = STRINGS.WORKOUT.TITLE_DEFAULT;
             return;
         }
 
         this.dateInput.value = workout.date;
         this.dayInput.value = workout.dayOfWeek;
         
-        let workoutTitle = "План";
+        let workoutTitle = STRINGS.WORKOUT.TITLE_DEFAULT;
         if (workout.templateId) {
             const template = model.templates.find(t => t.id === workout.templateId);
             if (template) workoutTitle = template.name;
@@ -1829,7 +1840,7 @@ class WorkoutView {
         this.dateInput.addEventListener('change', () => controller.handleHeaderChange());
         this.dayInput.addEventListener('change', () => controller.handleHeaderChange());
         this.btnPrev.addEventListener('click', () => controller.navigateWorkout(-1));
-        this.btnNext.addEventListener('click', () => controller.navigateWorkout(1));
+        this.btnNext.addEventListener('click', () => controller.handleNextWorkout());
     }
 }
 
@@ -2846,6 +2857,7 @@ class AppView {
     }
 
     init(controller) {
+        this.controller = controller;
         this.bindNavigation(controller);
         this.workoutView.bindEvents(controller);
         this.historyView.bindEvents(controller);
@@ -2901,16 +2913,80 @@ class AppView {
     }
 
     async updateNavButtons(model) {
+        if (this.controller && this.controller.isDraftMode) {
+            if (this.els.btnPrevWorkout) this.els.btnPrevWorkout.disabled = true;
+            if (this.els.btnNextWorkout) {
+                this.els.btnNextWorkout.disabled = true;
+                this.els.btnNextWorkout.textContent = '+';
+                this.els.btnNextWorkout.title = STRINGS.WORKOUT.TOOLTIP_NEW;
+            }
+            return;
+        }
         if (!model.activeWorkoutId) {
             if (this.els.btnPrevWorkout) this.els.btnPrevWorkout.disabled = true;
-            if (this.els.btnNextWorkout) this.els.btnNextWorkout.disabled = true;
+            if (this.els.btnNextWorkout) {
+                this.els.btnNextWorkout.disabled = true;
+                this.els.btnNextWorkout.textContent = '▶';
+                this.els.btnNextWorkout.title = STRINGS.WORKOUT.TOOLTIP_NEXT;
+            }
             return;
         }
         const hasPrev = await model.getAdjacentWorkoutId(model.activeWorkoutId, -1);
         const hasNext = await model.getAdjacentWorkoutId(model.activeWorkoutId, 1);
         
         if (this.els.btnPrevWorkout) this.els.btnPrevWorkout.disabled = !hasPrev;
-        if (this.els.btnNextWorkout) this.els.btnNextWorkout.disabled = !hasNext;
+        if (this.els.btnNextWorkout) {
+            if (!hasNext) {
+                this.els.btnNextWorkout.disabled = false;
+                this.els.btnNextWorkout.textContent = '+';
+                this.els.btnNextWorkout.title = STRINGS.WORKOUT.TOOLTIP_NEW;
+            } else {
+                this.els.btnNextWorkout.disabled = false;
+                this.els.btnNextWorkout.textContent = '▶';
+                this.els.btnNextWorkout.title = STRINGS.WORKOUT.TOOLTIP_NEXT;
+            }
+        }
+    }
+
+    showWorkoutDraft(model) {
+        this.workoutView.titleEl.textContent = STRINGS.WORKOUT.TITLE_NEW_WORKOUT;
+        
+        const today = new Date();
+        this.workoutView.dateInput.value = today.toISOString().split('T')[0];
+        this.workoutView.dayInput.value = STRINGS.COMMON.DAYS[today.getDay()];
+        
+        this.workoutView.container.innerHTML = '';
+        
+        this.hideAddExerciseForm();
+        if (this.els.btnShowAddEx) {
+            this.els.btnShowAddEx.classList.add('d-none');
+        }
+
+        if (this.els.btnPrevWorkout) this.els.btnPrevWorkout.disabled = true;
+        if (this.els.btnNextWorkout) {
+            this.els.btnNextWorkout.disabled = true;
+            this.els.btnNextWorkout.textContent = '+';
+            this.els.btnNextWorkout.title = STRINGS.WORKOUT.TOOLTIP_NEW;
+        }
+
+        let optionsHtml = `<option value="empty">${STRINGS.WORKOUT.EMPTY_WORKOUT_OPTION}</option>`;
+        if (model.templates && model.templates.length > 0) {
+            optionsHtml += model.templates.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+        }
+        this.els.tplOptionsUi.innerHTML = `<select id="template-select-dropdown" style="width:100%; padding:10px;">${optionsHtml}</select>`;
+        this.els.tplSelectionContainer.classList.remove('d-none');
+
+        this.els.mainNavbar.style.setProperty('--progress', '0%');
+        if (this.timeContainer) {
+            this.timeContainer.textContent = '⏱️ 00:00';
+        }
+    }
+
+    hideWorkoutDraft() {
+        this.els.tplSelectionContainer.classList.add('d-none');
+        if (this.els.btnShowAddEx) {
+            this.els.btnShowAddEx.classList.remove('d-none');
+        }
     }
 
     bindNavigation(controller) {
@@ -2992,27 +3068,27 @@ class AppView {
         this.els.btnSaveNewEx.addEventListener('click', () => controller.handleSaveNewExercise(this.addingToLibraryOnly));
 
         this.els.btnShowTemplates.addEventListener('click', () => {
-            if (controller.model.templates.length === 0) {
-                this.els.tplOptionsUi.innerHTML = '<p>Нет шаблонов.</p>';
-            } else {
-                this.els.tplOptionsUi.innerHTML = '<select id="template-select-dropdown" style="width:100%; padding:10px;"><option value="empty">Пустая тренировка</option>' + 
-                    controller.model.templates.map(t => `<option value="${t.id}">${t.name}</option>`).join('') + '</select>';
-            }
-            this.els.tplSelectionContainer.classList.remove('d-none');
-            this.els.btnShowTemplates.classList.add('d-none');
+            controller.startNewWorkoutDraft();
+
+
+
+
+
+
+
         });
 
         this.els.btnCancelTpl.addEventListener('click', () => {
-            this.els.tplSelectionContainer.classList.add('d-none');
-            this.els.btnShowTemplates.classList.remove('d-none');
+            controller.cancelWorkoutDraft();
+
         });
 
         this.els.btnConfirmTpl.addEventListener('click', () => {
-            const sel = this.els.tplSelectDropdown();
-            const val = sel ? sel.value : 'empty';
-            controller.handleStartWorkout(val === 'empty' ? null : val);
-            this.els.tplSelectionContainer.classList.add('d-none');
-            this.els.btnShowTemplates.classList.remove('d-none');
+            controller.confirmWorkoutDraft();
+
+
+
+
         });
 
         // Export Modal Events
@@ -3267,6 +3343,8 @@ class AppController {
         this.view = view;
         this.statsService = new StatisticsService(model);
         this.currentParsedImportPayload = null;
+        this.isDraftMode = false;
+        this.previousWorkoutIdBeforeDraft = null;
     }
 
     async init() {
@@ -3312,8 +3390,15 @@ class AppController {
             }
             hash = 'workout';
         }
+        if (hash !== 'workout' && this.isDraftMode) {
+            await this.cancelWorkoutDraft();
+        }
         this.view.switchTab(hash);
-        await this.view.renderAll(this.model, this.statsService);
+        if (hash === 'workout' && this.isDraftMode) {
+            this.view.showWorkoutDraft(this.model);
+        } else {
+            await this.view.renderAll(this.model, this.statsService);
+        }
     }
 
     async handleToggleComplete(exIndex, cardElement) {
@@ -3384,6 +3469,16 @@ class AppController {
     }
 
     async handleHeaderChange() {
+        if (this.isDraftMode) {
+            const d = this.view.workoutView.dateInput.value;
+            if (d) {
+                const dayIndex = new Date(d).getDay();
+                if (!isNaN(dayIndex)) {
+                    this.view.workoutView.dayInput.value = STRINGS.COMMON.DAYS[dayIndex];
+                }
+            }
+            return;
+        }
         const d = this.view.workoutView.dateInput.value;
         const day = this.view.workoutView.dayInput.value;
         await this.model.updateWorkoutHeader(d, day);
@@ -3391,6 +3486,7 @@ class AppController {
     }
 
     async navigateWorkout(dir) {
+        if (this.isDraftMode) return;
         const nextId = await this.model.getAdjacentWorkoutId(this.model.activeWorkoutId, dir);
         if (nextId) {
             await this.model.loadActiveWorkout(nextId);
@@ -3398,12 +3494,70 @@ class AppController {
         }
     }
 
+    async handleNextWorkout() {
+        if (this.isDraftMode) return;
+        const nextId = await this.model.getAdjacentWorkoutId(this.model.activeWorkoutId, 1);
+        if (nextId) {
+            await this.model.loadActiveWorkout(nextId);
+            await this.view.renderAll(this.model, this.statsService);
+        } else if (this.model.activeWorkoutId) {
+            this.startNewWorkoutDraft();
+        }
+    }
+
+    startNewWorkoutDraft() {
+        this.isDraftMode = true;
+        this.previousWorkoutIdBeforeDraft = this.model.activeWorkoutId;
+
+        if (window.location.hash !== '#workout') {
+            window.location.hash = 'workout';
+        } else {
+            this.view.switchTab('workout');
+            this.view.showWorkoutDraft(this.model);
+        }
+    }
+
+    async cancelWorkoutDraft() {
+        if (!this.isDraftMode) return;
+        this.isDraftMode = false;
+        this.view.hideWorkoutDraft();
+        if (this.previousWorkoutIdBeforeDraft) {
+            await this.model.loadActiveWorkout(this.previousWorkoutIdBeforeDraft);
+        }
+        this.previousWorkoutIdBeforeDraft = null;
+        await this.view.renderAll(this.model, this.statsService);
+    }
+
+    async confirmWorkoutDraft() {
+        if (!this.isDraftMode) return;
+        const sel = this.view.els.tplSelectDropdown();
+        const val = sel ? sel.value : 'empty';
+        const tplId = (val && val !== 'empty') ? val : null;
+        const customDate = this.view.workoutView.dateInput.value;
+        const customDay = this.view.workoutView.dayInput.value;
+
+        this.isDraftMode = false;
+        this.previousWorkoutIdBeforeDraft = null;
+        this.view.hideWorkoutDraft();
+
+        await this.model.addWorkout(tplId, customDate, customDay);
+        await this.view.renderAll(this.model, this.statsService);
+    }
+
     async handleStartWorkout(templateId) {
+        this.isDraftMode = false;
+        this.previousWorkoutIdBeforeDraft = null;
+        this.view.hideWorkoutDraft();
         await this.model.addWorkout(templateId);
         window.location.hash = 'workout';
     }
 
     async handleLoadWorkout(id) {
+        if (this.isDraftMode) {
+            this.isDraftMode = false;
+            this.previousWorkoutIdBeforeDraft = null;
+            this.view.hideWorkoutDraft();
+        }
         await this.model.loadActiveWorkout(id);
         window.location.hash = 'workout';
     }

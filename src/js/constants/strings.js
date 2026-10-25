@@ -13,6 +13,15 @@ export const STRINGS = {
         DELETED_EXERCISE: 'Удалено',
         TARGET_NONE: '-'
     },
+    WORKOUT: {
+        TITLE_NEW_WORKOUT: 'Новая тренировка',
+        TITLE_DEFAULT: 'План',
+        TOOLTIP_NEXT: 'Следующая тренировка',
+        TOOLTIP_PREV: 'Предыдущая тренировка',
+        TOOLTIP_NEW: 'Начать новую тренировку',
+        EMPTY_WORKOUT_OPTION: 'Пустая тренировка',
+        NO_ACTIVE_WORKOUTS: 'Нет активных тренировок. Создайте новую!'
+    },
     STATISTICS: {
         STREAK_TEMPLATE: '🌟 Вы тренируетесь {n} {word} подряд без пропусков!',
         CHART_TITLES: {
