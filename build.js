@@ -22,6 +22,13 @@ function build() {
 
     // Функция для простой минификации JavaScript
     function minifyJs(jsContent) {
+        // Защищаем строковые литералы с обратными кавычками (`...`) от удаления переносов строк
+        const templateLiterals = [];
+        jsContent = jsContent.replace(/`[\s\S]*?`/g, (match) => {
+            templateLiterals.push(match);
+            return `__TL_${templateLiterals.length - 1}__`;
+        });
+
         // Удаляем однострочные комментарии // ...
         // Избегаем удаления // если они являются частью протокола (например, http://)
         jsContent = jsContent.replace(/(^|[^\:])\/\/.*$/gm, '$1');
@@ -33,6 +40,10 @@ function build() {
         jsContent = jsContent.replace(/\s{2,}/g, ' ');
         // Удаляем пробелы вокруг операторов и скобок (осторожно, чтобы не сломать ASI)
         jsContent = jsContent.replace(/\s*([=+\-\*\/%&|^!~?:,;()\[\]<>])\s*/g, '$1');
+
+        // Восстанавливаем сохраненные шаблонные строки
+        jsContent = jsContent.replace(/__TL_(\d+)__/g, (_, idx) => templateLiterals[idx]);
+
         // Удаляем пробелы в начале и конце
         jsContent = jsContent.trim();
         return jsContent;
@@ -52,6 +63,7 @@ function build() {
         'js/constants/strings.js',
         'js/utils.js',
         'js/services/statisticsService.js',
+        'js/services/aiPromptService.js',
         'js/db.js',
         'js/model.js',
         'js/view/workoutView.js',

@@ -49,8 +49,55 @@ export const STRINGS = {
         ERROR_NO_CATEGORY: 'Выберите категорию',
         ERROR_NO_EXERCISE: 'Выберите упражнение',
         ERROR_NO_DATA_EXPORT: 'Нет данных для экспорта',
+        ERROR_NO_SELECTION: 'Пожалуйста, выберите хотя бы один элемент',
+        ERROR_INVALID_JSON: 'Не удалось распознать данные. Проверьте формат JSON или текст ответа ИИ.',
+        ERROR_NOTHING_TO_IMPORT: 'В предоставленных данных не найдено подходящих элементов для импорта.',
         ERROR_CATEGORY_EXISTS: 'Такая категория уже есть!',
         ALERT_NO_MORE_WORKOUTS: 'Больше нет сохраненных тренировок.',
-        IMPORT_SUCCESS: 'Импорт завершен!'
+        IMPORT_SUCCESS: 'Импорт завершен успешно!',
+        COPIED_TO_CLIPBOARD: 'Скопировано в буфер обмена!'
+    },
+    EXPORT_IMPORT: {
+        MODAL_EXPORT_TITLE: 'Экспорт данных',
+        MODAL_IMPORT_TITLE: 'Импорт данных',
+        SELECT_ALL: 'Выбрать все',
+        DESELECT_ALL: 'Снять все',
+        SECTION_LIBRARY: 'Каталог упражнений и категории',
+        SECTION_TEMPLATES: 'Шаблоны тренировок',
+        SECTION_HISTORY: 'История тренировок (все записи)',
+        BTN_COPY_AI: '📋 Скопировать для ИИ',
+        BTN_COPY_JSON: '📋 Скопировать JSON',
+        BTN_DOWNLOAD_JSON: '💾 Скачать JSON',
+        BTN_IMPORT_SELECTED: 'Импортировать выбранное',
+        BTN_PASTE_CLIPBOARD: '📋 Вставить из буфера',
+        BTN_CHOOSE_FILE: '📁 Выбрать файл .json',
+        PASTE_PLACEHOLDER: 'Вставьте сюда JSON или ответ чата с ИИ (включая markdown ```json)...',
+        DETECTED_SECTIONS_TITLE: 'Обнаружено в данных для импорта:',
+        AI_PROMPT_HEADER: 'Ты — профессиональный фитнес-тренер и методист.',
+        AI_PROMPT_TASK: 'Пожалуйста, проанализируй эти данные и составь новый шаблон тренировки (или скорректируй существующие) с учетом моих целей и комментариев ниже:',
+        AI_PROMPT_USER_COMMENTS: '[Здесь опишите ваши цели, пожелания, фокус или комментарии]',
+        AI_PROMPT_JSON_INSTRUCTIONS: 'ВАЖНО: В конце своего ответа обязательно предоставь итоговый тренировочный шаблон в виде валидного JSON-блока кода ```json ... ``` точно по следующей структуре, чтобы я мог напрямую импортировать его в приложение:',
+        AI_PROMPT_EXAMPLE_BANNER: 'ПРИМЕР ОЖИДАЕМОГО JSON (ФОРМАТ ДЛЯ ВАШЕГО ОТВЕТА):',
+        AI_PROMPT_EXAMPLE_END: '▲ КОНЕЦ ПРИМЕРА ШАБЛОНА | НАЧАЛО ДАННЫХ ДЛЯ АНАЛИЗА ▼',
+        AI_PROMPT_DATA_BANNER: 'АКТУАЛЬНЫЕ ДАННЫЕ ТРЕНИРОВОК ДЛЯ АНАЛИЗА (JSON):',
+        AI_PROMPT_JSON_EXAMPLE: `{
+  "templates": [
+    {
+      "name": "Название шаблона (например, Верх тела A)",
+      "exercises": [
+        {
+          "name": "Жим штанги лежа",
+          "category": "Грудь",
+          "target": "3x8-10, отдых 2 мин"
+        },
+        {
+          "name": "Тяга верхнего блока",
+          "category": "Спина",
+          "target": "3x10-12"
+        }
+      ]
+    }
+  ]
+}`
     }
 };

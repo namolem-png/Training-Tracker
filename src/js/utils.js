@@ -26,3 +26,34 @@ export function getDateRange(days) {
     }
     return { startDate, endDate };
 }
+
+/**
+ * Copies text to the clipboard with fallback for unsupported environments.
+ * @param {string} text - The text to copy.
+ * @returns {Promise<boolean>}
+ */
+export async function copyToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        try {
+            await navigator.clipboard.writeText(text);
+            return true;
+        } catch (e) {
+            console.warn('navigator.clipboard.writeText failed, using fallback', e);
+        }
+    }
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-999999px";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    try {
+        const successful = document.execCommand('copy');
+        textArea.remove();
+        return successful;
+    } catch (e) {
+        textArea.remove();
+        return false;
+    }
+}

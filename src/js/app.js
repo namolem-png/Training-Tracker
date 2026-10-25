@@ -4,12 +4,15 @@ import { AppView } from './view/appView.js';
 import { injectPWA } from './pwa.js';
 import { STRINGS } from './constants/strings.js';
 import { StatisticsService } from './services/statisticsService.js';
+import { copyToClipboard } from './utils.js';
+import { generateAiPrompt } from './services/aiPromptService.js';
 
 export class AppController {
     constructor(model, view) {
         this.model = model;
         this.view = view;
         this.statsService = new StatisticsService(model);
+        this.currentParsedImportPayload = null;
     }
 
     async init() {
@@ -228,32 +231,167 @@ export class AppController {
         await this.view.renderAll(this.model, this.statsService);
     }
 
-    async handleExport() {
-        this.view.showLoading?.('Подготовка файла...');
-        setTimeout(async () => {
-            const data = await this.model.getExportData();
-            if (data.workouts.length === 0 && data.exercises.length === 0) return alert(STRINGS.MESSAGES.ERROR_NO_DATA_EXPORT);
-            const blob = new Blob([JSON.stringify(data)], { type: "application/json" });
-            const a = document.createElement("a");
-            a.href = URL.createObjectURL(blob);
-            a.download = `gym_history_${new Date().toISOString().split('T')[0]}.json`;
-            a.click();
-        }, 50);
+    handleOpenExport() {
+        this.view.openExportModal(this.model);
     }
 
-    async handleImport(event) {
+    handleExport() {
+        this.handleOpenExport();
+    }
+
+    getExportSelection() {
+        const list = this.view.els.exportOptionsList;
+        const includeLibrary = Boolean(list.querySelector('#export-check-library')?.checked);
+        const templateIds = Array.from(list.querySelectorAll('.export-check-template:checked')).map(el => el.dataset.tplId);
+        const includeHistory = Boolean(list.querySelector('#export-check-history')?.checked);
+
+        if (!includeLibrary && templateIds.length === 0 && !includeHistory) {
+            alert(STRINGS.MESSAGES.ERROR_NO_SELECTION);
+            return null;
+        }
+
+        return { includeLibrary, templateIds, includeHistory };
+    }
+
+    async handleExportCopyAi() {
+        const selection = this.getExportSelection();
+        if (!selection) return;
+
+        const data = await this.model.buildSelectiveExport(selection);
+        const prompt = generateAiPrompt(data);
+        const success = await copyToClipboard(prompt);
+        if (success) {
+            alert(STRINGS.MESSAGES.COPIED_TO_CLIPBOARD);
+            this.view.closeExportModal();
+        } else {
+            alert('Не удалось скопировать в буфер обмена.');
+        }
+    }
+
+    async handleExportCopyJson() {
+        const selection = this.getExportSelection();
+        if (!selection) return;
+
+        const data = await this.model.buildSelectiveExport(selection);
+        const jsonStr = JSON.stringify(data, null, 2);
+        const success = await copyToClipboard(jsonStr);
+        if (success) {
+            alert(STRINGS.MESSAGES.COPIED_TO_CLIPBOARD);
+            this.view.closeExportModal();
+        } else {
+            alert('Не удалось скопировать в буфер обмена.');
+        }
+    }
+
+    async handleExportDownloadJson() {
+        const selection = this.getExportSelection();
+        if (!selection) return;
+
+        const data = await this.model.buildSelectiveExport(selection);
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `gym_tracker_export_${new Date().toISOString().split('T')[0]}.json`;
+        a.click();
+        this.view.closeExportModal();
+    }
+
+    handleOpenImport() {
+        this.currentParsedImportPayload = null;
+        this.view.openImportModal();
+    }
+
+    handleImport() {
+        this.handleOpenImport();
+    }
+
+    async handleImportPasteClipboard() {
+        if (navigator.clipboard && navigator.clipboard.readText) {
+            try {
+                const text = await navigator.clipboard.readText();
+                if (text && text.trim()) {
+                    this.view.els.importJsonTextarea.value = text;
+                    this.handleParseImportText();
+                } else {
+                    alert('Буфер обмена пуст.');
+                }
+            } catch (e) {
+                alert('Не удалось прочитать буфер обмена. Пожалуйста, вставьте текст в поле вручную (Ctrl+V).');
+            }
+        } else {
+            alert('Чтение буфера обмена не поддерживается вашим браузером. Пожалуйста, вставьте текст в поле вручную.');
+        }
+    }
+
+    handleImportFileSelected(event) {
         const file = event.target.files[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onload = async (e) => {
-            try {
-                if(!confirm(STRINGS.MESSAGES.CONFIRM_IMPORT)) return;
-                await this.model.importData(JSON.parse(e.target.result));
-                alert(STRINGS.MESSAGES.IMPORT_SUCCESS);
-                location.reload();
-            } catch (err) { alert(STRINGS.MESSAGES.ERROR_IMPORT); }
+        reader.onload = (e) => {
+            this.view.els.importJsonTextarea.value = e.target.result;
+            this.handleParseImportText();
         };
         reader.readAsText(file);
+        event.target.value = '';
+    }
+
+    handleParseImportText() {
+        const text = this.view.els.importJsonTextarea.value;
+        if (!text || !text.trim()) {
+            alert(STRINGS.MESSAGES.ERROR_INVALID_JSON);
+            return;
+        }
+
+        try {
+            const payload = this.model.parseImportPayload(text);
+            this.currentParsedImportPayload = payload;
+            this.view.renderDetectedImport(payload);
+        } catch (err) {
+            console.error('Ошибка распознавания данных:', err);
+            alert(STRINGS.MESSAGES.ERROR_INVALID_JSON);
+        }
+    }
+
+    async handleConfirmImportSelected() {
+        if (!this.currentParsedImportPayload) {
+            alert(STRINGS.MESSAGES.ERROR_NOTHING_TO_IMPORT);
+            return;
+        }
+
+        const list = this.view.els.importOptionsList;
+        const importLibrary = Boolean(list.querySelector('#import-check-library')?.checked);
+        const selectedTemplateIndices = Array.from(list.querySelectorAll('.import-check-template:checked')).map(el => parseInt(el.dataset.idx, 10));
+        const importHistory = Boolean(list.querySelector('#import-check-history')?.checked);
+
+        if (!importLibrary && selectedTemplateIndices.length === 0 && !importHistory) {
+            alert(STRINGS.MESSAGES.ERROR_NO_SELECTION);
+            return;
+        }
+
+        try {
+            const summary = await this.model.executeSelectiveImport({
+                importLibrary,
+                selectedTemplateIndices,
+                importHistory
+            }, this.currentParsedImportPayload);
+
+            let msg = STRINGS.MESSAGES.IMPORT_SUCCESS;
+            const details = [];
+            if (summary.importedTemplatesCount > 0) details.push(`Шаблонов: ${summary.importedTemplatesCount}`);
+            if (summary.importedExercisesCount > 0) details.push(`Новых упражнений: ${summary.importedExercisesCount}`);
+            if (summary.importedWorkoutsCount > 0) details.push(`Тренировок: ${summary.importedWorkoutsCount}`);
+            if (details.length > 0) {
+                msg += `\n(${details.join(', ')})`;
+            }
+
+            alert(msg);
+            this.view.closeImportModal();
+            this.currentParsedImportPayload = null;
+            await this.view.renderAll(this.model, this.statsService);
+        } catch (err) {
+            console.error('Ошибка сохранения импорта:', err);
+            alert(STRINGS.MESSAGES.ERROR_IMPORT);
+        }
     }
     
     populateAddExForm(catId, isLibraryOnly) {

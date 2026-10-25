@@ -267,9 +267,64 @@
             </div>
         </div>
 
-        <button id="btn-export-data" class="action-btn btn-export">💾 Экспорт данных (JSON)</button>
-        <input type="file" id="fileInput" accept=".json" class="d-none">
-        <button id="btn-import-data" class="action-btn btn-import">📂 Импорт данных (JSON)</button>
+        <button id="btn-export-data" class="action-btn btn-export">💾 Экспорт данных</button>
+        <button id="btn-import-data" class="action-btn btn-import">📂 Импорт данных</button>
+    </div>
+</div>
+
+<!-- Модальное окно ЭКСПОРТА -->
+<div id="modal-export" class="modal-overlay d-none">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3>💾 Экспорт данных</h3>
+            <button id="btn-close-export-modal" class="modal-close-btn" aria-label="Закрыть">✖</button>
+        </div>
+        <div class="modal-body">
+            <p class="fs-14 text-muted mb-10">Выберите, какие данные включить в экспорт:</p>
+            <div class="d-flex gap-10 mb-10">
+                <button id="btn-export-select-all" class="btn-small-toggle" type="button">Выбрать все</button>
+                <button id="btn-export-deselect-all" class="btn-small-toggle" type="button">Снять все</button>
+            </div>
+            <div id="export-options-list" class="checklist-container mb-15"></div>
+        </div>
+        <div class="modal-footer d-flex flex-column gap-10">
+            <button id="btn-export-copy-ai" class="btn-ai-prompt" type="button">📋 Скопировать для ИИ</button>
+            <div class="d-flex gap-10 w-100">
+                <button id="btn-export-copy-json" class="btn-confirm flex-1" type="button">📋 Скопировать JSON</button>
+                <button id="btn-export-download-json" class="btn-cancel flex-1" type="button">💾 Скачать JSON</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно ИМПОРТА -->
+<div id="modal-import" class="modal-overlay d-none">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h3>📂 Импорт данных</h3>
+            <button id="btn-close-import-modal" class="modal-close-btn" aria-label="Закрыть">✖</button>
+        </div>
+        <div class="modal-body">
+            <input type="file" id="import-file-input" accept=".json" class="d-none">
+            <div class="d-flex gap-10 mb-10">
+                <button id="btn-import-trigger-file" class="btn-small-toggle flex-1" type="button">📁 Выбрать файл (.json)</button>
+                <button id="btn-import-paste-clipboard" class="btn-small-toggle flex-1" type="button">📋 Вставить из буфера</button>
+            </div>
+            
+            <textarea id="import-json-textarea" class="import-textarea mb-10" placeholder="Вставьте сюда JSON или ответ чата с ИИ (включая markdown ```json)..."></textarea>
+            
+            <button id="btn-import-parse" class="action-btn btn-confirm mb-15" type="button">🔍 Распознать данные</button>
+
+            <div id="import-detected-container" class="d-none">
+                <p class="fs-14 fw-bold mb-5">Обнаружено в данных:</p>
+                <div class="d-flex gap-10 mb-10">
+                    <button id="btn-import-select-all" class="btn-small-toggle" type="button">Выбрать все</button>
+                    <button id="btn-import-deselect-all" class="btn-small-toggle" type="button">Снять все</button>
+                </div>
+                <div id="import-options-list" class="checklist-container mb-15"></div>
+                <button id="btn-confirm-import-selected" class="action-btn btn-confirm" type="button">Импортировать выбранное</button>
+            </div>
+        </div>
     </div>
 </div>
 
