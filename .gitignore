@@ -1,0 +1,11 @@
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# User export data files
+gym_history_*.json
+
+# Logs & temporary files
+*.log
+.temp/

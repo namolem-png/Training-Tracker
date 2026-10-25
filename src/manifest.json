@@ -1,4 +1,5 @@
 {
+  "id": "./",
   "name": "Дневник Тренировок",
   "short_name": "Тренировки",
   "description": "Персональный дневник тренировок",
@@ -8,6 +9,10 @@
   "orientation": "portrait",
   "background_color": "#f4f7f6",
   "theme_color": "#2c3e50",
+  "prefer_related_applications": false,
+  "categories": ["fitness", "health", "sports"],
+  "dir": "ltr",
+  "lang": "ru",
   "icons": [
     {
       "src": "icon-192.png",

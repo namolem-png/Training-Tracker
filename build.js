@@ -88,18 +88,16 @@ function build() {
     const distDir = path.join(__dirname, 'dist');
     if (!fs.existsSync(distDir)) fs.mkdirSync(distDir);
     fs.writeFileSync(path.join(distDir, 'index.html'), html);
-    fs.writeFileSync(path.join(__dirname, 'index.html'), html);
 
     // Копируем файлы PWA (manifest.json, sw.js, icon-192.png, icon-512.png, favicon.png, favicon.ico)
     ['manifest.json', 'sw.js', 'icon-192.png', 'icon-512.png', 'favicon.png', 'favicon.ico'].forEach(file => {
         const srcFile = path.join(srcDir, file);
         if (fs.existsSync(srcFile)) {
             fs.copyFileSync(srcFile, path.join(distDir, file));
-            fs.copyFileSync(srcFile, path.join(__dirname, file));
         }
     });
     
-    console.log('Сборка завершена успешно! Файлы: dist/index.html, index.html, PWA ресурсы');
+    console.log('Сборка завершена успешно! Файлы в папке dist/');
 }
 
 build();
