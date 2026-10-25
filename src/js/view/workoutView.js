@@ -111,10 +111,21 @@ export class WorkoutView {
         return card;
     }
 
-    renderCardSets(model, exIndex, cardElement) {
+    renderCardSets(model, exIndex, cardElement, focusInput = false) {
         const ex = model.getActiveWorkout().exercises[exIndex];
         const container = cardElement.querySelector('.sets-container');
-        if (container) this.updateSetsInCard(ex, exIndex, container);
+        if (container) {
+            this.updateSetsInCard(ex, exIndex, container);
+            if (focusInput) {
+                const firstInput = container.querySelector('.add-set-form input');
+                if (firstInput) firstInput.focus();
+            }
+        }
+    }
+
+    focusAddSetInput(exIndex) {
+        const firstInput = document.getElementById(`weight-${exIndex}`);
+        if (firstInput) firstInput.focus();
     }
 
     updateSetsInCard(ex, exIndex, container) {

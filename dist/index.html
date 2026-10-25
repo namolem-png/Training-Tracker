@@ -1765,10 +1765,21 @@ class WorkoutView {
         return card;
     }
 
-    renderCardSets(model, exIndex, cardElement) {
+    renderCardSets(model, exIndex, cardElement, focusInput = false) {
         const ex = model.getActiveWorkout().exercises[exIndex];
         const container = cardElement.querySelector('.sets-container');
-        if (container) this.updateSetsInCard(ex, exIndex, container);
+        if (container) {
+            this.updateSetsInCard(ex, exIndex, container);
+            if (focusInput) {
+                const firstInput = container.querySelector('.add-set-form input');
+                if (firstInput) firstInput.focus();
+            }
+        }
+    }
+
+    focusAddSetInput(exIndex) {
+        const firstInput = document.getElementById(`weight-${exIndex}`);
+        if (firstInput) firstInput.focus();
     }
 
     updateSetsInCard(ex, exIndex, container) {
@@ -3319,8 +3330,9 @@ class AppController {
 
     async handleAddSet(exIndex, weight, reps, cardElement) {
         if (!weight || !reps) return alert(STRINGS.MESSAGES.ERROR_NO_WEIGHT_REPS);
-        await this.model.addSet(exIndex, weight, reps);
-        await this.updateWorkoutAndStats(exIndex, cardElement);
+        const savePromise = this.model.addSet(exIndex, weight, reps);
+        await this.updateWorkoutAndStats(exIndex, cardElement, true);
+        await savePromise;
     }
 
     async handleEditSet(exIdx, setIdx, cardElement) {
@@ -3349,11 +3361,14 @@ class AppController {
         }
     }
 
-    async updateWorkoutAndStats(exIndex, cardElement) {
+    async updateWorkoutAndStats(exIndex, cardElement, focusAddSet = false) {
         if (cardElement) {
-            this.view.workoutView.renderCardSets(this.model, exIndex, cardElement);
+            this.view.workoutView.renderCardSets(this.model, exIndex, cardElement, focusAddSet);
         } else {
             this.view.workoutView.render(this.model);
+            if (focusAddSet) {
+                this.view.workoutView.focusAddSetInput(exIndex);
+            }
         }
         this.view.updateProgress(this.model);
         await this.view.statisticsView.render(this.model, this.statsService);

@@ -76,8 +76,9 @@ export class AppController {
 
     async handleAddSet(exIndex, weight, reps, cardElement) {
         if (!weight || !reps) return alert(STRINGS.MESSAGES.ERROR_NO_WEIGHT_REPS);
-        await this.model.addSet(exIndex, weight, reps);
-        await this.updateWorkoutAndStats(exIndex, cardElement);
+        const savePromise = this.model.addSet(exIndex, weight, reps);
+        await this.updateWorkoutAndStats(exIndex, cardElement, true);
+        await savePromise;
     }
 
     async handleEditSet(exIdx, setIdx, cardElement) {
@@ -106,11 +107,14 @@ export class AppController {
         }
     }
 
-    async updateWorkoutAndStats(exIndex, cardElement) {
+    async updateWorkoutAndStats(exIndex, cardElement, focusAddSet = false) {
         if (cardElement) {
-            this.view.workoutView.renderCardSets(this.model, exIndex, cardElement);
+            this.view.workoutView.renderCardSets(this.model, exIndex, cardElement, focusAddSet);
         } else {
             this.view.workoutView.render(this.model);
+            if (focusAddSet) {
+                this.view.workoutView.focusAddSetInput(exIndex);
+            }
         }
         this.view.updateProgress(this.model);
         await this.view.statisticsView.render(this.model, this.statsService);
