@@ -1,0 +1,89 @@
+:root {
+    --bg-color: #f4f7f6;
+    --card-bg: #ffffff;
+    --text-main: #333333;
+    --text-muted: #777777;
+    --primary: #4CAF50;
+    --primary-hover: #45a049;
+    --secondary: #3498db;
+    --danger: #e74c3c;
+    --export-color: #7f8c8d;
+    --import-color: #f39c12;
+    --border: #e0e0e0;
+    --nav-bg: #2c3e50;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    margin: 0;
+    padding: 0;
+    padding-bottom: 50px;
+    -webkit-tap-highlight-color: transparent; /* Убирает синее выделение при тапе на мобилках */
+}
+
+.container {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 15px;
+    width: 100%;
+}
+
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* Global Utilities */
+.mt-0 { margin-top: 0 !important; }
+.mt-10 { margin-top: 10px !important; }
+.mt-15 { margin-top: 15px !important; }
+.mt-20 { margin-top: 20px !important; }
+.mt-30 { margin-top: 30px !important; }
+.mb-5 { margin-bottom: 5px !important; }
+.mb-10 { margin-bottom: 10px !important; }
+.mb-15 { margin-bottom: 15px !important; }
+.mb-20 { margin-bottom: 20px !important; }
+.ml-10 { margin-left: 10px !important; }
+.m-0 { margin: 0 !important; }
+
+.w-100 { width: 100% !important; }
+.w-auto { width: auto !important; }
+.h-auto { height: auto !important; }
+
+.d-block { display: block !important; }
+.d-none { display: none !important; }
+.d-flex { display: flex !important; }
+.d-inline-block { display: inline-block !important; }
+.flex-column { flex-direction: column !important; }
+.flex-wrap { flex-wrap: wrap !important; }
+.flex-1 { flex: 1; }
+.flex-between-center { display: flex; justify-content: space-between; align-items: center; }
+
+.gap-5 { gap: 5px !important; }
+.gap-10 { gap: 10px !important; }
+.gap-15 { gap: 15px !important; }
+
+.p-10 { padding: 10px !important; }
+.p-10-15 { padding: 10px 15px !important; }
+.p-10-20 { padding: 10px 20px !important; }
+
+.align-center { align-items: center !important; }
+.text-center { text-align: center !important; }
+.text-left { text-align: left !important; }
+
+.text-primary { color: var(--primary) !important; }
+.bg-secondary { background-color: var(--secondary) !important; }
+
+.br-5 { border-radius: 5px !important; }
+.border-standard { border: 1px solid var(--border) !important; }
+.border-primary { border-color: var(--primary) !important; }
+
+.fw-bold { font-weight: bold !important; }
+.fs-12 { font-size: 12px !important; }
+.fs-14 { font-size: 14px !important; }
+.fs-20 { font-size: 20px !important; }
+
+.btn-confirm { flex: 1; background-color: var(--primary); color: white; border: none; padding: 12px; border-radius: 5px; font-weight: bold; cursor: pointer; }
+.btn-cancel { flex: 1; background-color: #ccc; color: #333; border: none; padding: 12px; border-radius: 5px; font-weight: bold; cursor: pointer; }

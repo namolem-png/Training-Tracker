@@ -53,10 +53,27 @@ function build() {
     let html = fs.readFileSync(path.join(srcDir, 'index.html'), 'utf8');
 
     // Собираем CSS
-    const cssPath = path.join(srcDir, 'style.css');
-    const css = fs.existsSync(cssPath) ? fs.readFileSync(cssPath, 'utf8') : '';
+    const cssFiles = [
+        'css/base.css',
+        'css/components.css',
+        'css/stats.css',
+        'css/modals.css'
+    ];
+    let cssBundle = '';
+    cssFiles.forEach(file => {
+        const filePath = path.join(srcDir, file);
+        if (fs.existsSync(filePath)) {
+            cssBundle += fs.readFileSync(filePath, 'utf8') + '\n';
+        } else {
+            console.warn(`Предупреждение: CSS файл ${filePath} не найден.`);
+        }
+    });
+    if (!cssBundle.trim()) {
+        const cssPath = path.join(srcDir, 'style.css');
+        cssBundle = fs.existsSync(cssPath) ? fs.readFileSync(cssPath, 'utf8') : '';
+    }
     // Заменяем тег link на встроенные стили
-    html = html.replace(/<link rel="stylesheet" href="style\.css">/, `<style>\n${minifyCss(css)}\n</style>`);
+    html = html.replace(/<link rel="stylesheet" href="style\.css">/, `<style>\n${minifyCss(cssBundle)}\n</style>`);
 
     // Собираем JS
     const jsFiles = [
