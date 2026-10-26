@@ -1,0 +1,39 @@
+name: Build and deploy to VPS
+
+on:
+  # Запуск при каждом пуше в ветку main
+  push:
+    branches: ["main"] #[cite: 1]
+
+  # Возможность ручного запуска из вкладки Actions
+  workflow_dispatch: #[cite: 1]
+
+# Отменяет предыдущие сборки при частых пушах
+concurrency:
+  group: "vps-deploy"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest #[cite: 1]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4 #[cite: 1]
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4 #[cite: 1]
+        with:
+          node-version: '20' #[cite: 1]
+
+      - name: Build site
+        run: node build.js #[cite: 1]
+
+      - name: Deploy static files to VPS via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          source: "./dist/*" #[cite: 1]
+          target: "/var/www/training-tracker/frontend"
+          strip_components: 1
