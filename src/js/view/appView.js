@@ -259,8 +259,8 @@ export class AppView {
         this.exerciseModalView.populateForm(model, catId, isLibraryOnly);
     }
 
-    openExportModal(model) {
-        this.importExportModalView.openExportModal(model);
+    async openExportModal(model) {
+        await this.importExportModalView.openExportModal(model);
     }
 
     closeExportModal() {

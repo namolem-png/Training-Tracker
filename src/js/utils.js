@@ -28,6 +28,21 @@ export function getDateRange(days) {
 }
 
 /**
+ * Returns Russian plural noun form based on number.
+ * @param {number} num - Count.
+ * @param {[string, string, string]} forms - [one, few, many], e.g. ['тренировка', 'тренировки', 'тренировок'].
+ * @returns {string}
+ */
+export function getPluralForm(num, forms) {
+    let val = Math.abs(num) % 100;
+    if (val >= 5 && val <= 20) return forms[2];
+    val %= 10;
+    if (val === 1) return forms[0];
+    if (val >= 2 && val <= 4) return forms[1];
+    return forms[2];
+}
+
+/**
  * Copies text to the clipboard with fallback for unsupported environments.
  * @param {string} text - The text to copy.
  * @returns {Promise<boolean>}

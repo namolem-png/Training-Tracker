@@ -5,7 +5,8 @@ export const STRINGS = {
         NO_DATA_SIMPLE: 'Нет данных',
         UNITS: {
             SETS: 'подходов',
-            WEEK_FORMS: ['неделю', 'недели', 'недель']
+            WEEK_FORMS: ['неделю', 'недели', 'недель'],
+            WORKOUT_FORMS: ['тренировка', 'тренировки', 'тренировок']
         }
     },
     MODEL: {
@@ -59,6 +60,8 @@ export const STRINGS = {
         ERROR_NO_EXERCISE: 'Выберите упражнение',
         ERROR_NO_DATA_EXPORT: 'Нет данных для экспорта',
         ERROR_NO_SELECTION: 'Пожалуйста, выберите хотя бы один элемент',
+        ERROR_DATE_RANGE_INVALID: 'Дата начала не может быть позже даты окончания',
+        ERROR_NO_WORKOUTS_IN_RANGE: 'В выбранном периоде нет сохраненных тренировок',
         ERROR_INVALID_JSON: 'Не удалось распознать данные. Проверьте формат JSON или текст ответа ИИ.',
         ERROR_NOTHING_TO_IMPORT: 'В предоставленных данных не найдено подходящих элементов для импорта.',
         ERROR_CATEGORY_EXISTS: 'Такая категория уже есть!',
@@ -74,6 +77,18 @@ export const STRINGS = {
         SECTION_LIBRARY: 'Каталог упражнений и категории',
         SECTION_TEMPLATES: 'Шаблоны тренировок',
         SECTION_HISTORY: 'История тренировок (все записи)',
+        SECTION_HISTORY_TITLE: 'История тренировок',
+        HISTORY_ALL_RECORDS: 'все записи',
+        HISTORY_COUNT_ALL: 'Все тренировки ({count})',
+        HISTORY_COUNT_SELECTED: 'Выбрано: {count} {word}',
+        HISTORY_COUNT_NONE: 'За выбранный период тренировок не найдено (0)',
+        HISTORY_DATE_RANGE_LABEL: '📅 Период истории тренировок:',
+        RANGE_ALL_TIME: 'Все время',
+        RANGE_7_DAYS: '7 дней',
+        RANGE_30_DAYS: '30 дней',
+        RANGE_90_DAYS: '90 дней',
+        DATE_FROM: 'С:',
+        DATE_TO: 'По:',
         BTN_COPY_AI: '📋 Скопировать для ИИ',
         BTN_COPY_JSON: '📋 Скопировать JSON',
         BTN_DOWNLOAD_JSON: '💾 Скачать JSON',

@@ -95,7 +95,20 @@ export function generateAiPrompt(exportData) {
         includedParts.push(`шаблоны тренировок: ${tplNames}`);
     }
     if (exportData.workouts && exportData.workouts.length > 0) {
-        includedParts.push(`история тренировок (${exportData.workouts.length} записей)`);
+        if (exportData.dateRange && (exportData.dateRange.startDate || exportData.dateRange.endDate)) {
+            const { startDate, endDate } = exportData.dateRange;
+            let rangeDesc = '';
+            if (startDate && endDate) {
+                rangeDesc = `за период с ${startDate} по ${endDate}`;
+            } else if (startDate) {
+                rangeDesc = `с ${startDate}`;
+            } else if (endDate) {
+                rangeDesc = `по ${endDate}`;
+            }
+            includedParts.push(`история тренировок ${rangeDesc} (${exportData.workouts.length} записей)`);
+        } else {
+            includedParts.push(`история тренировок (${exportData.workouts.length} записей)`);
+        }
     }
 
     const dataDescription = includedParts.length > 0

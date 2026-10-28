@@ -1,5 +1,10 @@
+import { getDateRange, getPluralForm } from '../utils.js';
+import { STRINGS } from '../constants/strings.js';
+import { STORE } from '../db.js';
+
 export class ImportExportModalView {
     constructor() {
+        this.cachedWorkouts = [];
         this.els = {
             // Export Modal
             btnExport: document.getElementById('btn-export-data'),
@@ -8,6 +13,11 @@ export class ImportExportModalView {
             btnExportSelectAll: document.getElementById('btn-export-select-all'),
             btnExportDeselectAll: document.getElementById('btn-export-deselect-all'),
             exportOptionsList: document.getElementById('export-options-list'),
+            exportHistoryRangeContainer: document.getElementById('export-history-range-container'),
+            exportRangePresets: document.getElementById('export-range-presets'),
+            exportDateStart: document.getElementById('export-date-start'),
+            exportDateEnd: document.getElementById('export-date-end'),
+            exportRangeInfo: document.getElementById('export-range-info'),
             btnExportCopyAi: document.getElementById('btn-export-copy-ai'),
             btnExportCopyJson: document.getElementById('btn-export-copy-json'),
             btnExportDownloadJson: document.getElementById('btn-export-download-json'),
@@ -47,6 +57,28 @@ export class ImportExportModalView {
         }
         if (this.els.btnExportDeselectAll) {
             this.els.btnExportDeselectAll.addEventListener('click', () => this.setAllExportCheckboxes(false));
+        }
+        if (this.els.exportRangePresets) {
+            this.els.exportRangePresets.addEventListener('click', (e) => {
+                const btn = e.target.closest('button[data-preset]');
+                if (!btn) return;
+                this.applyPreset(btn.dataset.preset);
+            });
+        }
+        if (this.els.exportDateStart) {
+            this.els.exportDateStart.addEventListener('input', () => this.handleCustomDateChange());
+            this.els.exportDateStart.addEventListener('change', () => this.handleCustomDateChange());
+        }
+        if (this.els.exportDateEnd) {
+            this.els.exportDateEnd.addEventListener('input', () => this.handleCustomDateChange());
+            this.els.exportDateEnd.addEventListener('change', () => this.handleCustomDateChange());
+        }
+        if (this.els.exportOptionsList) {
+            this.els.exportOptionsList.addEventListener('change', (e) => {
+                if (e.target.id === 'export-check-history') {
+                    this.updateHistoryRangeVisibility();
+                }
+            });
         }
         if (this.els.btnExportCopyAi) {
             this.els.btnExportCopyAi.addEventListener('click', () => controller.handleExportCopyAi());
@@ -93,8 +125,12 @@ export class ImportExportModalView {
         }
     }
 
-    openExportModal(model) {
+    async openExportModal(model) {
         if (!this.els.exportOptionsList) return;
+        this.cachedWorkouts = model.workoutRepo
+            ? await model.workoutRepo.getAll()
+            : (model.db ? await model.db.getAll(STORE.WORKOUTS) : []);
+
         this.els.exportOptionsList.innerHTML = '';
         const frag = document.createDocumentFragment();
 
@@ -103,7 +139,7 @@ export class ImportExportModalView {
         libLabel.className = 'checklist-item';
         libLabel.innerHTML = `
             <input type="checkbox" id="export-check-library" checked>
-            <span>📚 <strong>Каталог упражнений</strong> (${model.exercises.length} упр., ${model.categories.length} кат.)</span>
+            <span>📚 <strong>${STRINGS.EXPORT_IMPORT.SECTION_LIBRARY}</strong> (${model.exercises.length} упр., ${model.categories.length} кат.)</span>
         `;
         frag.appendChild(libLabel);
 
@@ -121,15 +157,23 @@ export class ImportExportModalView {
         }
 
         // 3. History
+        const totalWorkouts = this.cachedWorkouts.length;
         const histLabel = document.createElement('label');
         histLabel.className = 'checklist-item';
+        const historyCountDesc = totalWorkouts > 0
+            ? `(${STRINGS.EXPORT_IMPORT.HISTORY_ALL_RECORDS}: ${totalWorkouts})`
+            : '(нет записей)';
         histLabel.innerHTML = `
             <input type="checkbox" id="export-check-history" checked>
-            <span>⏱️ <strong>История тренировок</strong> (все сохраненные записи)</span>
+            <span>⏱️ <strong>${STRINGS.EXPORT_IMPORT.SECTION_HISTORY_TITLE}</strong> <span class="text-muted fs-12">${historyCountDesc}</span></span>
         `;
         frag.appendChild(histLabel);
 
         this.els.exportOptionsList.appendChild(frag);
+
+        this.applyPreset('all');
+        this.updateHistoryRangeVisibility();
+
         if (this.els.modalExport) this.els.modalExport.classList.remove('d-none');
     }
 
@@ -141,6 +185,95 @@ export class ImportExportModalView {
         if (!this.els.exportOptionsList) return;
         const checkboxes = this.els.exportOptionsList.querySelectorAll('input[type="checkbox"]');
         checkboxes.forEach(cb => cb.checked = checked);
+        this.updateHistoryRangeVisibility();
+    }
+
+    updateHistoryRangeVisibility() {
+        const histCheck = this.els.exportOptionsList?.querySelector('#export-check-history');
+        const isHistoryChecked = Boolean(histCheck?.checked);
+        if (this.els.exportHistoryRangeContainer) {
+            this.els.exportHistoryRangeContainer.classList.toggle('d-none', !isHistoryChecked);
+        }
+    }
+
+    applyPreset(preset) {
+        if (!this.els.exportRangePresets) return;
+        const buttons = this.els.exportRangePresets.querySelectorAll('button[data-preset]');
+        buttons.forEach(b => b.classList.toggle('active', b.dataset.preset === preset));
+
+        if (preset === 'all') {
+            if (this.els.exportDateStart) this.els.exportDateStart.value = '';
+            if (this.els.exportDateEnd) this.els.exportDateEnd.value = '';
+        } else {
+            const days = parseInt(preset, 10);
+            const { startDate, endDate } = getDateRange(days);
+            if (this.els.exportDateStart) this.els.exportDateStart.value = startDate;
+            if (this.els.exportDateEnd) this.els.exportDateEnd.value = endDate;
+        }
+
+        this.updateRangeSummary();
+    }
+
+    handleCustomDateChange() {
+        const startDate = this.els.exportDateStart?.value || '';
+        const endDate = this.els.exportDateEnd?.value || '';
+
+        if (this.els.exportRangePresets) {
+            const buttons = this.els.exportRangePresets.querySelectorAll('button[data-preset]');
+            buttons.forEach(b => {
+                const preset = b.dataset.preset;
+                let matches = false;
+                if (preset === 'all' && !startDate && !endDate) {
+                    matches = true;
+                } else if (preset !== 'all') {
+                    const days = parseInt(preset, 10);
+                    const range = getDateRange(days);
+                    if (range.startDate === startDate && range.endDate === endDate) {
+                        matches = true;
+                    }
+                }
+                b.classList.toggle('active', matches);
+            });
+        }
+
+        this.updateRangeSummary();
+    }
+
+    updateRangeSummary() {
+        if (!this.els.exportRangeInfo) return;
+        const total = (this.cachedWorkouts || []).length;
+        const startDate = this.els.exportDateStart?.value || '';
+        const endDate = this.els.exportDateEnd?.value || '';
+
+        if (startDate && endDate && startDate > endDate) {
+            this.els.exportRangeInfo.className = 'fs-12 text-danger mt-5';
+            this.els.exportRangeInfo.textContent = '⚠️ ' + STRINGS.MESSAGES.ERROR_DATE_RANGE_INVALID;
+            return;
+        }
+
+        this.els.exportRangeInfo.className = 'fs-12 text-muted mt-5';
+
+        if (!startDate && !endDate) {
+            this.els.exportRangeInfo.textContent = STRINGS.EXPORT_IMPORT.HISTORY_COUNT_ALL.replace('{count}', total);
+            return;
+        }
+
+        const filtered = (this.cachedWorkouts || []).filter(w => {
+            const d = (w.date || '').split('T')[0];
+            if (startDate && d < startDate) return false;
+            if (endDate && d > endDate) return false;
+            return true;
+        });
+
+        if (filtered.length === 0) {
+            this.els.exportRangeInfo.className = 'fs-12 text-danger mt-5';
+            this.els.exportRangeInfo.textContent = STRINGS.EXPORT_IMPORT.HISTORY_COUNT_NONE;
+        } else {
+            const word = getPluralForm(filtered.length, STRINGS.COMMON.UNITS.WORKOUT_FORMS);
+            this.els.exportRangeInfo.textContent = STRINGS.EXPORT_IMPORT.HISTORY_COUNT_SELECTED
+                .replace('{count}', filtered.length)
+                .replace('{word}', word);
+        }
     }
 
     getExportSelection() {
@@ -154,7 +287,32 @@ export class ImportExportModalView {
             return null;
         }
 
-        return { includeLibrary, templateIds, includeHistory };
+        let historyDateRange = null;
+        if (includeHistory) {
+            const startDate = this.els.exportDateStart?.value || null;
+            const endDate = this.els.exportDateEnd?.value || null;
+            if (startDate || endDate) {
+                if (startDate && endDate && startDate > endDate) {
+                    throw new Error(STRINGS.MESSAGES.ERROR_DATE_RANGE_INVALID);
+                }
+                historyDateRange = { startDate, endDate };
+
+                const matchingCount = (this.cachedWorkouts || []).filter(w => {
+                    const d = (w.date || '').split('T')[0];
+                    if (startDate && d < startDate) return false;
+                    if (endDate && d > endDate) return false;
+                    return true;
+                }).length;
+
+                if (matchingCount === 0 && !includeLibrary && templateIds.length === 0) {
+                    throw new Error(STRINGS.MESSAGES.ERROR_NO_WORKOUTS_IN_RANGE);
+                }
+            } else if ((this.cachedWorkouts || []).length === 0 && !includeLibrary && templateIds.length === 0) {
+                throw new Error(STRINGS.MESSAGES.ERROR_NO_WORKOUTS_IN_RANGE);
+            }
+        }
+
+        return { includeLibrary, templateIds, includeHistory, historyDateRange };
     }
 
     openImportModal() {

@@ -30,6 +30,20 @@ export class WorkoutRepository {
         return await this.db.getInRange(STORE.WORKOUTS, 'date', startDate, endDate, 'prev');
     }
 
+    async getInRange(startDate, endDate, direction = 'next') {
+        if (startDate && endDate) {
+            if (startDate > endDate) return [];
+            return await this.db.getInRange(STORE.WORKOUTS, 'date', startDate, endDate, direction);
+        }
+        const all = await this.getAll();
+        return all.filter(w => {
+            const d = (w.date || '').split('T')[0];
+            if (startDate && d < startDate) return false;
+            if (endDate && d > endDate) return false;
+            return true;
+        });
+    }
+
     async getAdjacentId(id, direction) {
         const current = await this.get(id);
         if (!current) return null;

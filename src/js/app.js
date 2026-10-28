@@ -313,21 +313,26 @@ export class AppController {
         await this.view.renderAll(this.model, this.statsService);
     }
 
-    handleOpenExport() {
-        this.view.openExportModal(this.model);
+    async handleOpenExport() {
+        await this.view.openExportModal(this.model);
     }
 
-    handleExport() {
-        this.handleOpenExport();
+    async handleExport() {
+        await this.handleOpenExport();
     }
 
     getExportSelection() {
-        const selection = this.view.importExportModalView.getExportSelection();
-        if (!selection) {
-            alert(STRINGS.MESSAGES.ERROR_NO_SELECTION);
+        try {
+            const selection = this.view.importExportModalView.getExportSelection();
+            if (!selection) {
+                alert(STRINGS.MESSAGES.ERROR_NO_SELECTION);
+                return null;
+            }
+            return selection;
+        } catch (err) {
+            alert(err.message);
             return null;
         }
-        return selection;
     }
 
     async handleExportCopyAi() {
@@ -365,10 +370,21 @@ export class AppController {
         if (!selection) return;
 
         const data = await this.model.buildSelectiveExport(selection);
+        let dateSuffix = new Date().toISOString().split('T')[0];
+        if (selection.historyDateRange) {
+            const { startDate, endDate } = selection.historyDateRange;
+            if (startDate && endDate) {
+                dateSuffix = startDate + '_to_' + endDate;
+            } else if (startDate) {
+                dateSuffix = 'from_' + startDate;
+            } else if (endDate) {
+                dateSuffix = 'to_' + endDate;
+            }
+        }
         const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
         const a = document.createElement("a");
         a.href = URL.createObjectURL(blob);
-        a.download = `gym_tracker_export_${new Date().toISOString().split('T')[0]}.json`;
+        a.download = 'gym_tracker_export_' + dateSuffix + '.json';
         a.click();
         this.view.closeExportModal();
     }

@@ -19,7 +19,7 @@ export class ImportExportService {
         return candidate;
     }
 
-    async buildSelectiveExport({ includeLibrary = false, templateIds = [], includeHistory = false } = {}) {
+    async buildSelectiveExport({ includeLibrary = false, templateIds = [], includeHistory = false, historyDateRange = null } = {}) {
         const exportData = {
             version: 1,
             exportedAt: new Date().toISOString()
@@ -52,9 +52,38 @@ export class ImportExportService {
         }
 
         if (includeHistory) {
-            exportData.workouts = await this.model.db.getAll(STORE.WORKOUTS);
+            let workouts = this.model.workoutRepo
+                ? await this.model.workoutRepo.getAll()
+                : await this.model.db.getAll(STORE.WORKOUTS);
+
+            if (historyDateRange && (historyDateRange.startDate || historyDateRange.endDate)) {
+                const { startDate, endDate } = historyDateRange;
+                workouts = workouts.filter(w => {
+                    const d = (w.date || '').split('T')[0];
+                    if (startDate && d < startDate) return false;
+                    if (endDate && d > endDate) return false;
+                    return true;
+                });
+                exportData.dateRange = {
+                    startDate: startDate || null,
+                    endDate: endDate || null
+                };
+            }
+
+            workouts.sort((a, b) => {
+                const dateA = (a.date || '').split('T')[0];
+                const dateB = (b.date || '').split('T')[0];
+                if (dateA !== dateB) return dateA.localeCompare(dateB);
+                return String(a.id || '').localeCompare(String(b.id || ''));
+            });
+
+            exportData.workouts = workouts;
+
             if (this.model.activeWorkoutId) {
-                exportData.activeWorkoutId = this.model.activeWorkoutId;
+                const isActiveIncluded = workouts.some(w => String(w.id) === String(this.model.activeWorkoutId));
+                if (isActiveIncluded) {
+                    exportData.activeWorkoutId = this.model.activeWorkoutId;
+                }
             }
         }
 

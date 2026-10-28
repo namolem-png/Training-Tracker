@@ -74,6 +74,9 @@ body {
 .text-left { text-align: left !important; }
 
 .text-primary { color: var(--primary) !important; }
+.text-muted { color: var(--text-muted) !important; }
+.text-danger { color: var(--danger) !important; }
+.align-items-center { align-items: center !important; }
 .bg-secondary { background-color: var(--secondary) !important; }
 
 .br-5 { border-radius: 5px !important; }

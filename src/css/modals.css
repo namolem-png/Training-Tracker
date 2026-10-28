@@ -149,6 +149,35 @@
 .btn-small-toggle:hover {
     background: #e2e8f0;
 }
+.btn-small-toggle.active {
+    background-color: var(--secondary);
+    color: white;
+    border-color: var(--secondary);
+}
+
+/* Export Date Range Container */
+.export-range-container {
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+}
+
+.export-date-input {
+    width: 100%;
+    padding: 7px 10px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    font-size: 13px;
+    background-color: #ffffff;
+    color: var(--text-main);
+    box-sizing: border-box;
+}
+
+.export-date-input:focus {
+    border-color: var(--secondary);
+    outline: none;
+}
 
 .btn-ai-prompt {
     background: linear-gradient(135deg, #8e44ad, #9b59b6);

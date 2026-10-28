@@ -293,6 +293,27 @@
                 <button id="btn-export-deselect-all" class="btn-small-toggle" type="button">Снять все</button>
             </div>
             <div id="export-options-list" class="checklist-container mb-15"></div>
+
+            <div id="export-history-range-container" class="export-range-container mb-15">
+                <label class="fs-13 fw-bold text-muted d-block mb-5">📅 Период истории тренировок:</label>
+                <div class="d-flex gap-5 mb-10 flex-wrap" id="export-range-presets">
+                    <button type="button" class="btn-small-toggle active" data-preset="all">Все время</button>
+                    <button type="button" class="btn-small-toggle" data-preset="7">7 дней</button>
+                    <button type="button" class="btn-small-toggle" data-preset="30">30 дней</button>
+                    <button type="button" class="btn-small-toggle" data-preset="90">90 дней</button>
+                </div>
+                <div class="d-flex gap-10 align-center mb-5">
+                    <div class="flex-1">
+                        <label for="export-date-start" class="fs-12 text-muted d-block mb-3">С:</label>
+                        <input type="date" id="export-date-start" class="export-date-input">
+                    </div>
+                    <div class="flex-1">
+                        <label for="export-date-end" class="fs-12 text-muted d-block mb-3">По:</label>
+                        <input type="date" id="export-date-end" class="export-date-input">
+                    </div>
+                </div>
+                <div id="export-range-info" class="fs-12 text-muted mt-5"></div>
+            </div>
         </div>
         <div class="modal-footer d-flex flex-column gap-10">
             <button id="btn-export-copy-ai" class="btn-ai-prompt" type="button">📋 Скопировать для ИИ</button>
