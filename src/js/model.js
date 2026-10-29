@@ -152,12 +152,17 @@ export class AppModel {
         if (!Array.isArray(exercises)) return exercises;
         const grouped = {};
         const catOrder = this.categories.map(c => c.id);
-        exercises.forEach(ex => {
+        const catOrderSet = new Set(catOrder);
+        for (const ex of exercises) {
             const catId = this.getLibraryExercise(ex.exerciseId).categoryId;
             if (!grouped[catId]) grouped[catId] = [];
             grouped[catId].push(ex);
-        });
-        return catOrder.filter(id => grouped[id]).flatMap(id => grouped[id]);
+        }
+        const orderedIds = [
+            ...catOrder.filter(id => grouped[id]),
+            ...Object.keys(grouped).filter(id => !catOrderSet.has(id))
+        ];
+        return orderedIds.flatMap(id => grouped[id]);
     }
 
     async addWorkout(templateId = null, customDate = null, customDay = null) {
