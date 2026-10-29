@@ -106,10 +106,25 @@ export class ExerciseModalView {
             this.els.newExCat.disabled = false;
         }
 
-        const parentBtn = isLibraryOnly ? this.els.btnShowAddLibEx : this.els.btnShowAddEx;
-        if (parentBtn && parentBtn.parentNode && this.els.addExFormContainer) {
-            parentBtn.parentNode.insertBefore(this.els.addExFormContainer, parentBtn);
-            this.els.addExFormContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        let placed = false;
+        if (categoryId && !isLibraryOnly) {
+            const catContent = document.getElementById(`cat-content-${categoryId}`);
+            const catHeader = document.querySelector(`[data-cat-id="${categoryId}"]`);
+            if (catContent && this.els.addExFormContainer) {
+                catContent.classList.remove('collapsed');
+                if (catHeader) catHeader.classList.remove('collapsed');
+                catContent.appendChild(this.els.addExFormContainer);
+                this.els.addExFormContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                placed = true;
+            }
+        }
+
+        if (!placed) {
+            const parentBtn = isLibraryOnly ? this.els.btnShowAddLibEx : this.els.btnShowAddEx;
+            if (parentBtn?.parentNode && this.els.addExFormContainer) {
+                parentBtn.parentNode.insertBefore(this.els.addExFormContainer, parentBtn);
+                this.els.addExFormContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
         }
     }
 

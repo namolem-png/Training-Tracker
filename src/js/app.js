@@ -21,30 +21,6 @@ export class AppController {
         await this.model.init();
         this.view.init(this);
 
-        // Переопределяем метод отображения формы, чтобы она перемещалась внутрь выбранной категории
-        const originalShowForm = this.view.showAddExerciseForm.bind(this.view);
-        this.view.showAddExerciseForm = (categoryId, isLibraryOnly) => {
-            // Вызываем базовую логику (настройка полей, кнопок и т.д.)
-            originalShowForm(categoryId, isLibraryOnly);
-            
-            // Если передан ID категории (клик по btn-add-to-cat), перемещаем форму
-            if (categoryId && !isLibraryOnly) {
-                const catContent = document.getElementById(`cat-content-${categoryId}`);
-                const catHeader = document.querySelector(`[data-cat-id="${categoryId}"]`);
-                if (catContent && this.view.els.addExFormContainer) {
-                    // Раскрываем категорию, если она была свернута
-                    catContent.classList.remove('collapsed');
-                    if (catHeader) catHeader.classList.remove('collapsed');
-                    
-                    // Перемещаем форму в конец списка упражнений данной категории
-                    catContent.appendChild(this.view.els.addExFormContainer);
-                    
-                    // Прокручиваем к форме для удобства
-                    this.view.els.addExFormContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            }
-        };
-        
         window.addEventListener('hashchange', () => this.handleRouting());
         this.handleRouting();
     }
