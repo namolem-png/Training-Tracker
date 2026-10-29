@@ -11,9 +11,10 @@ export class StatisticsService {
     async _withCache(methodName, params, computeFn) {
         const lastWorkoutArr = await this.model.workoutRepo.getByPage(1, 0, 'prev');
         const dataVersion = lastWorkoutArr.length > 0 ? lastWorkoutArr[0].id : 'empty';
+        const revision = this.model?.dataRevision ?? 0;
 
         const today = formatLocalDate();
-        const cacheKey = `gym_stats_${methodName}_${JSON.stringify(params)}_${dataVersion}_${today}`;
+        const cacheKey = `gym_stats_${methodName}_${JSON.stringify(params)}_rev${revision}_${dataVersion}_${today}`;
 
         const cached = sessionStorage.getItem(cacheKey);
         if (cached) {
@@ -36,13 +37,29 @@ export class StatisticsService {
         return result;
     }
 
+    /**
+     * Очищает старые записи кэша статистики из sessionStorage без пропуска индексов.
+     */
     _clearOldCache() {
+        const keysToRemove = [];
         for (let i = 0; i < sessionStorage.length; i++) {
             const key = sessionStorage.key(i);
             if (key && key.startsWith('gym_stats_')) {
-                sessionStorage.removeItem(key);
+                keysToRemove.push(key);
             }
         }
+        keysToRemove.forEach(k => sessionStorage.removeItem(k));
+    }
+
+    /**
+     * Инвалидация кэша статистики при мутациях данных.
+     */
+    invalidateCache() {
+        this._clearOldCache();
+    }
+
+    clearCache() {
+        this._clearOldCache();
     }
 
     /**

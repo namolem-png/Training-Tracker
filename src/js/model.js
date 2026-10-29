@@ -18,6 +18,19 @@ export class AppModel {
         this.templates = [];
         this.activeWorkoutId = null;
         this.activeWorkout = null; // Текущая тренировка, загруженная в память
+        this.dataRevision = 0;
+        this.onDataChange = null;
+    }
+
+    incrementDataRevision() {
+        this.dataRevision = (this.dataRevision || 0) + 1;
+        if (typeof this.onDataChange === 'function') {
+            this.onDataChange();
+        }
+    }
+
+    bumpDataVersion() {
+        this.incrementDataRevision();
     }
 
     async init() {
@@ -187,6 +200,7 @@ export class AppModel {
         this.activeWorkout = newWorkout;
         await this.saveActiveWorkoutId(newWorkout.id);
         await this.workoutRepo.save(newWorkout);
+        this.incrementDataRevision();
     }
 
     async deleteWorkout(id) {
@@ -197,6 +211,7 @@ export class AppModel {
             const recent = await this.getWorkoutsByPage(1, 0);
             if (recent.length > 0) await this.loadActiveWorkout(recent[0].id);
         }
+        this.incrementDataRevision();
     }
 
     async updateWorkoutHeader(date, dayOfWeek) {
@@ -212,36 +227,42 @@ export class AppModel {
             workout.dayOfWeek = dayOfWeek;
         }
         await this.workoutRepo.save(workout);
+        this.incrementDataRevision();
     }
 
     async toggleComplete(exIndex) {
         const workout = this.getActiveWorkout();
         workout.exercises[exIndex].completed = !workout.exercises[exIndex].completed;
         await this.workoutRepo.save(workout);
+        this.incrementDataRevision();
     }
 
     async addSet(exIndex, weight, reps) {
         const workout = this.getActiveWorkout();
         workout.exercises[exIndex].sets.push({ weight, reps });
         await this.workoutRepo.save(workout);
+        this.incrementDataRevision();
     }
 
     async editSet(exIndex, setIndex, weight, reps) {
         const workout = this.getActiveWorkout();
         workout.exercises[exIndex].sets[setIndex] = { weight, reps };
         await this.workoutRepo.save(workout);
+        this.incrementDataRevision();
     }
 
     async deleteSet(exIndex, setIndex) {
         const workout = this.getActiveWorkout();
         workout.exercises[exIndex].sets.splice(setIndex, 1);
         await this.workoutRepo.save(workout);
+        this.incrementDataRevision();
     }
 
     async deleteExerciseFromWorkout(exIndex) {
         const workout = this.getActiveWorkout();
         workout.exercises.splice(exIndex, 1);
         await this.workoutRepo.save(workout);
+        this.incrementDataRevision();
     }
 
     async addExerciseToWorkout(exerciseId) {
@@ -254,6 +275,7 @@ export class AppModel {
         });
         workout.exercises = this.reorderExercisesByCategory(workout.exercises);
         await this.workoutRepo.save(workout);
+        this.incrementDataRevision();
     }
 
     async addLibraryExercise(name, catId, target) {
@@ -264,6 +286,7 @@ export class AppModel {
         const newLibEx = { id: exerciseId, name, categoryId: catId, target };
         this.exercises.push(newLibEx);
         await this.exerciseRepo.saveExercise(newLibEx);
+        this.incrementDataRevision();
         return exerciseId;
     }
 
@@ -272,12 +295,14 @@ export class AppModel {
         if (ex) {
             ex.name = name; ex.categoryId = catId; ex.target = target;
             await this.exerciseRepo.saveExercise(ex);
+            this.incrementDataRevision();
         }
     }
 
     async deleteLibraryExercise(id) {
         this.exercises = this.exercises.filter(e => e.id !== id);
         await this.exerciseRepo.deleteExercise(id);
+        this.incrementDataRevision();
     }
 
     async addCategory(name) {
@@ -285,6 +310,7 @@ export class AppModel {
             const newCat = { id: 'c_' + Date.now(), name };
             this.categories.push(newCat);
             await this.exerciseRepo.saveCategory(newCat);
+            this.incrementDataRevision();
             return true;
         }
         return false;
@@ -293,6 +319,7 @@ export class AppModel {
     async deleteCategory(id) {
         this.categories = this.categories.filter(c => c.id !== id);
         await this.exerciseRepo.deleteCategory(id);
+        this.incrementDataRevision();
     }
 
     async saveTemplate(id, name, exercises) {
@@ -304,11 +331,13 @@ export class AppModel {
             this.templates.push(templateData);
         }
         await this.templateRepo.save(templateData);
+        this.incrementDataRevision();
     }
 
     async deleteTemplate(id) {
         this.templates = this.templates.filter(t => t.id !== id);
         await this.templateRepo.delete(id);
+        this.incrementDataRevision();
     }
 
     getUniqueTemplateName(baseName) {
@@ -324,6 +353,8 @@ export class AppModel {
     }
 
     async executeSelectiveImport(options, payload) {
-        return await this.importExportService.executeSelectiveImport(options, payload);
+        const result = await this.importExportService.executeSelectiveImport(options, payload);
+        this.incrementDataRevision();
+        return result;
     }
 }
