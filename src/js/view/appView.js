@@ -222,7 +222,7 @@ export class AppView {
             if (this.timeContainer) this.timeContainer.classList.add('d-none');
         } else {
             if (this.timeContainer) this.timeContainer.classList.remove('d-none');
-            if (window.app && window.app.model) this.updateProgress(window.app.model); 
+            if (this.controller?.model) this.updateProgress(this.controller.model);
         }
     }
 
@@ -245,7 +245,7 @@ export class AppView {
     }
 
     showAddExerciseForm(categoryId, isLibraryOnly) {
-        this.exerciseModalView.show(categoryId, isLibraryOnly, window.app ? window.app.model : null);
+        this.exerciseModalView.show(categoryId, isLibraryOnly, this.controller?.model || null);
     }
 
     hideAddExerciseForm() {
