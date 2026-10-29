@@ -232,8 +232,10 @@ export class AppController {
     }
 
     async handleDeleteCategory(id) {
-        await this.model.deleteCategory(id);
-        await this.view.renderAll(this.model, this.statsService);
+        if (confirm(STRINGS.MESSAGES.CONFIRM_DELETE_CATEGORY)) {
+            await this.model.deleteCategory(id);
+            await this.view.renderAll(this.model, this.statsService);
+        }
     }
 
     async handleEditLibrary(id) {

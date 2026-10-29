@@ -119,7 +119,7 @@ export class HistoryView {
                 case 'load-workout': controller.handleLoadWorkout(btn.dataset.id); break;
                 case 'delete-workout': 
                     e.stopPropagation();
-                    if(confirm("Удалить?")) controller.handleDeleteWorkout(btn.dataset.id); break;
+                    controller.handleDeleteWorkout(btn.dataset.id); break;
             }
         });
     }
