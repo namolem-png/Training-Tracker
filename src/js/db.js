@@ -104,18 +104,24 @@ export class GymDatabase {
     }
 
     get(storeName, id) {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             const transaction = this.db.transaction(storeName, 'readonly');
             const request = transaction.objectStore(storeName).get(id);
             request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+            transaction.onerror = () => reject(transaction.error);
+            transaction.onabort = () => reject(transaction.error || new Error('Transaction aborted'));
         });
     }
 
     getAll(storeName) {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             const transaction = this.db.transaction(storeName, 'readonly');
             const request = transaction.objectStore(storeName).getAll();
             request.onsuccess = () => resolve(request.result || []);
+            request.onerror = () => reject(request.error);
+            transaction.onerror = () => reject(transaction.error);
+            transaction.onabort = () => reject(transaction.error || new Error('Transaction aborted'));
         });
     }
 
@@ -150,6 +156,8 @@ export class GymDatabase {
                 else resolve(results);
             };
             request.onerror = () => reject(request.error);
+            transaction.onerror = () => reject(transaction.error);
+            transaction.onabort = () => reject(transaction.error || new Error('Transaction aborted'));
         });
     }
 
@@ -181,6 +189,8 @@ export class GymDatabase {
                 }
             };
             request.onerror = () => reject(request.error);
+            transaction.onerror = () => reject(transaction.error);
+            transaction.onabort = () => reject(transaction.error || new Error('Transaction aborted'));
         });
     }
 
@@ -188,7 +198,7 @@ export class GymDatabase {
      * Находит ID соседней записи относительно текущей.
      */
     getAdjacentId(storeName, indexName, currentId, currentValue, direction) {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             const transaction = this.db.transaction(storeName, 'readonly');
             const store = transaction.objectStore(storeName);
             const index = store.index(indexName);
@@ -214,7 +224,9 @@ export class GymDatabase {
                 if (passedCurrent) resolve(cursor.value.id);
                 else cursor.continue();
             };
-            request.onerror = () => resolve(null);
+            request.onerror = () => reject(request.error);
+            transaction.onerror = () => reject(transaction.error);
+            transaction.onabort = () => reject(transaction.error || new Error('Transaction aborted'));
         });
     }
 
@@ -223,22 +235,31 @@ export class GymDatabase {
             const transaction = this.db.transaction(storeName, 'readwrite');
             const request = transaction.objectStore(storeName).put(data);
             request.onsuccess = () => resolve();
-            request.onerror = () => reject();
+            request.onerror = () => reject(request.error);
+            transaction.onerror = () => reject(transaction.error);
+            transaction.onabort = () => reject(transaction.error || new Error('Transaction aborted'));
         });
     }
 
     delete(storeName, id) {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             const transaction = this.db.transaction(storeName, 'readwrite');
             const request = transaction.objectStore(storeName).delete(id);
             request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+            transaction.onerror = () => reject(transaction.error);
+            transaction.onabort = () => reject(transaction.error || new Error('Transaction aborted'));
         });
     }
 
     clear(storeName) {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             const transaction = this.db.transaction(storeName, 'readwrite');
-            transaction.objectStore(storeName).clear().onsuccess = () => resolve();
+            const request = transaction.objectStore(storeName).clear();
+            request.onsuccess = () => resolve();
+            request.onerror = () => reject(request.error);
+            transaction.onerror = () => reject(transaction.error);
+            transaction.onabort = () => reject(transaction.error || new Error('Transaction aborted'));
         });
     }
 }
