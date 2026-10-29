@@ -28,10 +28,12 @@ export class WorkoutView {
 
         this.dateInput.value = workout.date;
         this.dayInput.value = workout.dayOfWeek;
-        
+
         let workoutTitle = STRINGS.WORKOUT.TITLE_DEFAULT;
         if (workout.templateId) {
-            const template = model.templates.find(t => t.id === workout.templateId);
+            const template = model.templates.find(
+                (t) => t.id === workout.templateId,
+            );
             if (template) workoutTitle = template.name;
         }
         this.titleEl.textContent = workoutTitle;
@@ -47,16 +49,26 @@ export class WorkoutView {
         const fragment = document.createDocumentFragment();
         const renderedCats = new Set();
 
-        model.categories.forEach(cat => {
+        model.categories.forEach((cat) => {
             if (grouped[cat.id]?.length > 0) {
-                this.appendCategoryToFragment(fragment, cat.id, cat.name, grouped[cat.id]);
+                this.appendCategoryToFragment(
+                    fragment,
+                    cat.id,
+                    cat.name,
+                    grouped[cat.id],
+                );
                 renderedCats.add(cat.id);
             }
         });
 
-        Object.keys(grouped).forEach(catId => {
+        Object.keys(grouped).forEach((catId) => {
             if (!renderedCats.has(catId)) {
-                this.appendCategoryToFragment(fragment, catId, model.getCategoryName(catId), grouped[catId]);
+                this.appendCategoryToFragment(
+                    fragment,
+                    catId,
+                    model.getCategoryName(catId),
+                    grouped[catId],
+                );
             }
         });
 
@@ -64,8 +76,8 @@ export class WorkoutView {
     }
 
     appendCategoryToFragment(fragment, catId, catName, items) {
-        const allCompleted = items.every(item => item.ex.completed);
-        
+        const allCompleted = items.every((item) => item.ex.completed);
+
         const header = document.createElement('div');
         header.className = `category-header ${allCompleted ? 'collapsed' : ''}`;
         header.dataset.action = 'toggle-category';
@@ -83,8 +95,10 @@ export class WorkoutView {
         content.className = `category-exercises ${allCompleted ? 'collapsed' : ''}`;
         content.id = `cat-content-${catId}`;
 
-        items.forEach(item => {
-            content.appendChild(this.createCardElement(item.ex, item.index, item.libEx));
+        items.forEach((item) => {
+            content.appendChild(
+                this.createCardElement(item.ex, item.index, item.libEx),
+            );
         });
 
         fragment.appendChild(header);
@@ -120,7 +134,9 @@ export class WorkoutView {
         if (container) {
             this.updateSetsInCard(ex, exIndex, container);
             if (focusInput) {
-                const firstInput = container.querySelector('.add-set-form input');
+                const firstInput = container.querySelector(
+                    '.add-set-form input',
+                );
                 if (firstInput) firstInput.focus();
             }
         }
@@ -160,7 +176,7 @@ export class WorkoutView {
     }
 
     bindEvents(controller) {
-        this.container.addEventListener('click', e => {
+        this.container.addEventListener('click', (e) => {
             const actionTarget = e.target.closest('[data-action]');
             if (!actionTarget) return;
             const action = actionTarget.dataset.action;
@@ -168,26 +184,48 @@ export class WorkoutView {
             const setIdx = actionTarget.dataset.set;
             const card = actionTarget.closest('.exercise-card');
 
-            switch(action) {
-                case 'toggle-complete': controller.handleToggleComplete(exIdx, card); break;
-                case 'delete-ex': controller.handleDeleteExercise(exIdx); break;
-                case 'delete-set': controller.handleDeleteSet(exIdx, setIdx, card); break;
-                case 'edit-set': controller.handleEditSet(exIdx, setIdx, card); break;
-                case 'add-set': 
+            switch (action) {
+                case 'toggle-complete':
+                    controller.handleToggleComplete(exIdx, card);
+                    break;
+                case 'delete-ex':
+                    controller.handleDeleteExercise(exIdx);
+                    break;
+                case 'delete-set':
+                    controller.handleDeleteSet(exIdx, setIdx, card);
+                    break;
+                case 'edit-set':
+                    controller.handleEditSet(exIdx, setIdx, card);
+                    break;
+                case 'add-set': {
                     const w = document.getElementById(`weight-${exIdx}`).value;
                     const r = document.getElementById(`reps-${exIdx}`).value;
-                    controller.handleAddSet(exIdx, w, r, card); 
+                    controller.handleAddSet(exIdx, w, r, card);
                     break;
-                case 'show-add-ex': controller.view.showAddExerciseForm(actionTarget.dataset.cat, false); break;
+                }
+                case 'show-add-ex':
+                    controller.view.showAddExerciseForm(
+                        actionTarget.dataset.cat,
+                        false,
+                    );
+                    break;
                 case 'toggle-category':
                     if (e.target.closest('button')) return;
                     controller.handleToggleCategory(actionTarget);
                     break;
             }
         });
-        this.dateInput.addEventListener('change', () => controller.handleHeaderChange());
-        this.dayInput.addEventListener('change', () => controller.handleHeaderChange());
-        this.btnPrev.addEventListener('click', () => controller.navigateWorkout(-1));
-        this.btnNext.addEventListener('click', () => controller.handleNextWorkout());
+        this.dateInput.addEventListener('change', () =>
+            controller.handleHeaderChange(),
+        );
+        this.dayInput.addEventListener('change', () =>
+            controller.handleHeaderChange(),
+        );
+        this.btnPrev.addEventListener('click', () =>
+            controller.navigateWorkout(-1),
+        );
+        this.btnNext.addEventListener('click', () =>
+            controller.handleNextWorkout(),
+        );
     }
 }

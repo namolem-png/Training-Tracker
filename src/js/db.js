@@ -3,7 +3,7 @@ export const STORE = {
     EXERCISES: 'exercises',
     CATEGORIES: 'categories',
     TEMPLATES: 'templates',
-    SETTINGS: 'settings'
+    SETTINGS: 'settings',
 };
 
 export class GymDatabase {
@@ -16,13 +16,17 @@ export class GymDatabase {
     init() {
         return new Promise((resolve, reject) => {
             if (typeof indexedDB === 'undefined') {
-                return reject(new Error('IndexedDB не поддерживается в данном браузере'));
+                return reject(
+                    new Error('IndexedDB не поддерживается в данном браузере'),
+                );
             }
 
             const openDatabase = (version) => {
                 let request;
                 try {
-                    request = version ? indexedDB.open(this.dbName, version) : indexedDB.open(this.dbName);
+                    request = version
+                        ? indexedDB.open(this.dbName, version)
+                        : indexedDB.open(this.dbName);
                 } catch (e) {
                     console.error('Исключение при вызове indexedDB.open:', e);
                     return reject(e);
@@ -31,23 +35,37 @@ export class GymDatabase {
                 request.onupgradeneeded = (event) => {
                     const db = event.target.result;
                     const tx = event.target.transaction;
-                    
+
                     let workoutStore;
                     if (!db.objectStoreNames.contains(STORE.WORKOUTS)) {
-                        workoutStore = db.createObjectStore(STORE.WORKOUTS, { keyPath: 'id' });
+                        workoutStore = db.createObjectStore(STORE.WORKOUTS, {
+                            keyPath: 'id',
+                        });
                     } else {
                         workoutStore = tx.objectStore(STORE.WORKOUTS);
                     }
-                    
+
                     // Создаем индекс для выборки по дате
                     if (!workoutStore.indexNames.contains('date')) {
-                        workoutStore.createIndex('date', 'date', { unique: false });
+                        workoutStore.createIndex('date', 'date', {
+                            unique: false,
+                        });
                     }
 
-                    if (!db.objectStoreNames.contains(STORE.EXERCISES)) db.createObjectStore(STORE.EXERCISES, { keyPath: 'id' });
-                    if (!db.objectStoreNames.contains(STORE.CATEGORIES)) db.createObjectStore(STORE.CATEGORIES, { keyPath: 'id' });
-                    if (!db.objectStoreNames.contains(STORE.TEMPLATES)) db.createObjectStore(STORE.TEMPLATES, { keyPath: 'id' });
-                    if (!db.objectStoreNames.contains(STORE.SETTINGS)) db.createObjectStore(STORE.SETTINGS, { keyPath: 'id' });
+                    if (!db.objectStoreNames.contains(STORE.EXERCISES))
+                        db.createObjectStore(STORE.EXERCISES, {
+                            keyPath: 'id',
+                        });
+                    if (!db.objectStoreNames.contains(STORE.CATEGORIES))
+                        db.createObjectStore(STORE.CATEGORIES, {
+                            keyPath: 'id',
+                        });
+                    if (!db.objectStoreNames.contains(STORE.TEMPLATES))
+                        db.createObjectStore(STORE.TEMPLATES, {
+                            keyPath: 'id',
+                        });
+                    if (!db.objectStoreNames.contains(STORE.SETTINGS))
+                        db.createObjectStore(STORE.SETTINGS, { keyPath: 'id' });
                 };
 
                 request.onsuccess = async (event) => {
@@ -64,13 +82,17 @@ export class GymDatabase {
                 };
 
                 request.onblocked = () => {
-                    console.warn('Инициализация IndexedDB заблокирована другой открытой вкладкой.');
+                    console.warn(
+                        'Инициализация IndexedDB заблокирована другой открытой вкладкой.',
+                    );
                 };
 
                 request.onerror = (event) => {
-                    const err = request.error || (event.target && event.target.error);
+                    const err = request.error || event.target?.error;
                     if (version && err && err.name === 'VersionError') {
-                        console.warn('Существующая версия IndexedDB выше запрошенной. Повторная попытка без указания версии.');
+                        console.warn(
+                            'Существующая версия IndexedDB выше запрошенной. Повторная попытка без указания версии.',
+                        );
                         openDatabase(null);
                         return;
                     }
@@ -90,12 +112,24 @@ export class GymDatabase {
         if (oldDataRaw && !migrated) {
             try {
                 const data = JSON.parse(oldDataRaw);
-                if (data.workouts) for (const w of data.workouts) await this.save(STORE.WORKOUTS, w);
-                if (data.exercises) for (const e of data.exercises) await this.save(STORE.EXERCISES, e);
-                if (data.categories) for (const c of data.categories) await this.save(STORE.CATEGORIES, c);
-                if (data.templates) for (const t of data.templates) await this.save(STORE.TEMPLATES, t);
-                if (data.activeWorkoutId) await this.save(STORE.SETTINGS, { id: 'activeWorkoutId', value: data.activeWorkoutId });
-                
+                if (data.workouts)
+                    for (const w of data.workouts)
+                        await this.save(STORE.WORKOUTS, w);
+                if (data.exercises)
+                    for (const e of data.exercises)
+                        await this.save(STORE.EXERCISES, e);
+                if (data.categories)
+                    for (const c of data.categories)
+                        await this.save(STORE.CATEGORIES, c);
+                if (data.templates)
+                    for (const t of data.templates)
+                        await this.save(STORE.TEMPLATES, t);
+                if (data.activeWorkoutId)
+                    await this.save(STORE.SETTINGS, {
+                        id: 'activeWorkoutId',
+                        value: data.activeWorkoutId,
+                    });
+
                 localStorage.setItem('migratedToIDB', 'true');
             } catch (e) {
                 console.error('Ошибка миграции:', e);
@@ -110,7 +144,8 @@ export class GymDatabase {
             request.onsuccess = () => resolve(request.result);
             request.onerror = () => reject(request.error);
             transaction.onerror = () => reject(transaction.error);
-            transaction.onabort = () => reject(transaction.error || new Error('Transaction aborted'));
+            transaction.onabort = () =>
+                reject(transaction.error || new Error('Transaction aborted'));
         });
     }
 
@@ -121,7 +156,8 @@ export class GymDatabase {
             request.onsuccess = () => resolve(request.result || []);
             request.onerror = () => reject(request.error);
             transaction.onerror = () => reject(transaction.error);
-            transaction.onabort = () => reject(transaction.error || new Error('Transaction aborted'));
+            transaction.onabort = () =>
+                reject(transaction.error || new Error('Transaction aborted'));
         });
     }
 
@@ -129,7 +165,7 @@ export class GymDatabase {
         return new Promise((resolve, reject) => {
             const transaction = this.db.transaction(storeName, 'readonly');
             const store = transaction.objectStore(storeName);
-            
+
             let request;
             if (indexName && store.indexNames.contains(indexName)) {
                 request = store.index(indexName).openCursor(null, direction);
@@ -157,7 +193,8 @@ export class GymDatabase {
             };
             request.onerror = () => reject(request.error);
             transaction.onerror = () => reject(transaction.error);
-            transaction.onabort = () => reject(transaction.error || new Error('Transaction aborted'));
+            transaction.onabort = () =>
+                reject(transaction.error || new Error('Transaction aborted'));
         });
     }
 
@@ -190,7 +227,8 @@ export class GymDatabase {
             };
             request.onerror = () => reject(request.error);
             transaction.onerror = () => reject(transaction.error);
-            transaction.onabort = () => reject(transaction.error || new Error('Transaction aborted'));
+            transaction.onabort = () =>
+                reject(transaction.error || new Error('Transaction aborted'));
         });
     }
 
@@ -202,12 +240,13 @@ export class GymDatabase {
             const transaction = this.db.transaction(storeName, 'readonly');
             const store = transaction.objectStore(storeName);
             const index = store.index(indexName);
-            
+
             const cursorDir = direction === -1 ? 'prev' : 'next';
-            const range = direction === -1 
-                ? IDBKeyRange.upperBound(currentValue) 
-                : IDBKeyRange.lowerBound(currentValue);
-            
+            const range =
+                direction === -1
+                    ? IDBKeyRange.upperBound(currentValue)
+                    : IDBKeyRange.lowerBound(currentValue);
+
             const request = index.openCursor(range, cursorDir);
             let passedCurrent = false;
 
@@ -226,7 +265,8 @@ export class GymDatabase {
             };
             request.onerror = () => reject(request.error);
             transaction.onerror = () => reject(transaction.error);
-            transaction.onabort = () => reject(transaction.error || new Error('Transaction aborted'));
+            transaction.onabort = () =>
+                reject(transaction.error || new Error('Transaction aborted'));
         });
     }
 
@@ -237,7 +277,8 @@ export class GymDatabase {
             request.onsuccess = () => resolve();
             request.onerror = () => reject(request.error);
             transaction.onerror = () => reject(transaction.error);
-            transaction.onabort = () => reject(transaction.error || new Error('Transaction aborted'));
+            transaction.onabort = () =>
+                reject(transaction.error || new Error('Transaction aborted'));
         });
     }
 
@@ -248,7 +289,8 @@ export class GymDatabase {
             request.onsuccess = () => resolve();
             request.onerror = () => reject(request.error);
             transaction.onerror = () => reject(transaction.error);
-            transaction.onabort = () => reject(transaction.error || new Error('Transaction aborted'));
+            transaction.onabort = () =>
+                reject(transaction.error || new Error('Transaction aborted'));
         });
     }
 
@@ -259,7 +301,8 @@ export class GymDatabase {
             request.onsuccess = () => resolve();
             request.onerror = () => reject(request.error);
             transaction.onerror = () => reject(transaction.error);
-            transaction.onabort = () => reject(transaction.error || new Error('Transaction aborted'));
+            transaction.onabort = () =>
+                reject(transaction.error || new Error('Transaction aborted'));
         });
     }
 }

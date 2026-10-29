@@ -4,23 +4,36 @@ export class ImportExportService {
     }
 
     getUniqueTemplateName(baseName) {
-        let name = (baseName || 'Шаблон').trim();
-        if (!this.model.templates.some(t => t.name.toLowerCase() === name.toLowerCase())) {
+        const name = (baseName || 'Шаблон').trim();
+        if (
+            !this.model.templates.some(
+                (t) => t.name.toLowerCase() === name.toLowerCase(),
+            )
+        ) {
             return name;
         }
         let counter = 1;
         let candidate = `${name} (импорт)`;
-        while (this.model.templates.some(t => t.name.toLowerCase() === candidate.toLowerCase())) {
+        while (
+            this.model.templates.some(
+                (t) => t.name.toLowerCase() === candidate.toLowerCase(),
+            )
+        ) {
             counter++;
             candidate = `${name} (импорт ${counter})`;
         }
         return candidate;
     }
 
-    async buildSelectiveExport({ includeLibrary = false, templateIds = [], includeHistory = false, historyDateRange = null } = {}) {
+    async buildSelectiveExport({
+        includeLibrary = false,
+        templateIds = [],
+        includeHistory = false,
+        historyDateRange = null,
+    } = {}) {
         const exportData = {
             version: 1,
-            exportedAt: new Date().toISOString()
+            exportedAt: new Date().toISOString(),
         };
 
         if (includeLibrary) {
@@ -29,32 +42,39 @@ export class ImportExportService {
         }
 
         if (Array.isArray(templateIds) && templateIds.length > 0) {
-            exportData.templates = templateIds.map(tid => {
-                const tpl = this.model.templates.find(t => t.id === tid);
-                if (!tpl) return null;
-                return {
-                    id: tpl.id,
-                    name: tpl.name,
-                    exercises: tpl.exercises, // Array of string IDs for 100% compatibility with older versions
-                    exerciseDetails: tpl.exercises.map(exId => {
-                        const lib = this.model.getLibraryExercise(exId);
-                        return {
-                            id: lib.id,
-                            name: lib.name,
-                            category: this.model.getCategoryName(lib.categoryId),
-                            target: lib.target || ''
-                        };
-                    })
-                };
-            }).filter(Boolean);
+            exportData.templates = templateIds
+                .map((tid) => {
+                    const tpl = this.model.templates.find((t) => t.id === tid);
+                    if (!tpl) return null;
+                    return {
+                        id: tpl.id,
+                        name: tpl.name,
+                        exercises: tpl.exercises, // Array of string IDs for 100% compatibility with older versions
+                        exerciseDetails: tpl.exercises.map((exId) => {
+                            const lib = this.model.getLibraryExercise(exId);
+                            return {
+                                id: lib.id,
+                                name: lib.name,
+                                category: this.model.getCategoryName(
+                                    lib.categoryId,
+                                ),
+                                target: lib.target || '',
+                            };
+                        }),
+                    };
+                })
+                .filter(Boolean);
         }
 
         if (includeHistory) {
             let workouts = await this.model.workoutRepo.getAll();
 
-            if (historyDateRange && (historyDateRange.startDate || historyDateRange.endDate)) {
+            if (
+                historyDateRange &&
+                (historyDateRange.startDate || historyDateRange.endDate)
+            ) {
                 const { startDate, endDate } = historyDateRange;
-                workouts = workouts.filter(w => {
+                workouts = workouts.filter((w) => {
                     const d = (w.date || '').split('T')[0];
                     if (startDate && d < startDate) return false;
                     if (endDate && d > endDate) return false;
@@ -62,7 +82,7 @@ export class ImportExportService {
                 });
                 exportData.dateRange = {
                     startDate: startDate || null,
-                    endDate: endDate || null
+                    endDate: endDate || null,
                 };
             }
 
@@ -76,7 +96,9 @@ export class ImportExportService {
             exportData.workouts = workouts;
 
             if (this.model.activeWorkoutId) {
-                const isActiveIncluded = workouts.some(w => String(w.id) === String(this.model.activeWorkoutId));
+                const isActiveIncluded = workouts.some(
+                    (w) => String(w.id) === String(this.model.activeWorkoutId),
+                );
                 if (isActiveIncluded) {
                     exportData.activeWorkoutId = this.model.activeWorkoutId;
                 }
@@ -108,10 +130,17 @@ export class ImportExportService {
                 const lastBracket = textToParse.lastIndexOf(']');
 
                 let candidate = null;
-                if (firstBrace !== -1 && lastBrace !== -1 && (firstBracket === -1 || firstBrace < firstBracket)) {
+                if (
+                    firstBrace !== -1 &&
+                    lastBrace !== -1 &&
+                    (firstBracket === -1 || firstBrace < firstBracket)
+                ) {
                     candidate = textToParse.slice(firstBrace, lastBrace + 1);
                 } else if (firstBracket !== -1 && lastBracket !== -1) {
-                    candidate = textToParse.slice(firstBracket, lastBracket + 1);
+                    candidate = textToParse.slice(
+                        firstBracket,
+                        lastBracket + 1,
+                    );
                 }
 
                 if (candidate) {
@@ -131,23 +160,39 @@ export class ImportExportService {
             // Could be array of templates or array of workouts
             if (parsed.length > 0 && parsed[0].exercises) {
                 parsed = { templates: parsed };
-            } else if (parsed.length > 0 && (parsed[0].date || parsed[0].dayOfWeek)) {
+            } else if (
+                parsed.length > 0 &&
+                (parsed[0].date || parsed[0].dayOfWeek)
+            ) {
                 parsed = { workouts: parsed };
             } else {
                 parsed = { templates: parsed };
             }
         } else if (parsed.template && typeof parsed.template === 'object') {
             parsed.templates = [parsed.template];
-        } else if (!parsed.templates && parsed.name && Array.isArray(parsed.exercises)) {
+        } else if (
+            !parsed.templates &&
+            parsed.name &&
+            Array.isArray(parsed.exercises)
+        ) {
             parsed = { templates: [parsed] };
         }
 
-        const normalizedTemplates = Array.isArray(parsed.templates) ? parsed.templates.filter(t => t && (t.name || t.exercises)) : [];
-        const normalizedCategories = Array.isArray(parsed.categories) ? parsed.categories : [];
-        const normalizedExercises = Array.isArray(parsed.exercises) ? parsed.exercises : [];
-        const normalizedWorkouts = Array.isArray(parsed.workouts) ? parsed.workouts : [];
+        const normalizedTemplates = Array.isArray(parsed.templates)
+            ? parsed.templates.filter((t) => t && (t.name || t.exercises))
+            : [];
+        const normalizedCategories = Array.isArray(parsed.categories)
+            ? parsed.categories
+            : [];
+        const normalizedExercises = Array.isArray(parsed.exercises)
+            ? parsed.exercises
+            : [];
+        const normalizedWorkouts = Array.isArray(parsed.workouts)
+            ? parsed.workouts
+            : [];
 
-        const hasLibrary = normalizedExercises.length > 0 || normalizedCategories.length > 0;
+        const hasLibrary =
+            normalizedExercises.length > 0 || normalizedCategories.length > 0;
         const hasTemplates = normalizedTemplates.length > 0;
         const hasHistory = normalizedWorkouts.length > 0;
 
@@ -162,7 +207,7 @@ export class ImportExportService {
             categories: normalizedCategories,
             exercises: normalizedExercises,
             templates: normalizedTemplates,
-            workouts: normalizedWorkouts
+            workouts: normalizedWorkouts,
         };
     }
 
@@ -183,9 +228,18 @@ export class ImportExportService {
         if (Array.isArray(payload.categories)) {
             for (const cat of payload.categories) {
                 if (!cat || !cat.name) continue;
-                const existing = this.model.categories.find(c => c.name.toLowerCase() === cat.name.toLowerCase());
+                const existing = this.model.categories.find(
+                    (c) => c.name.toLowerCase() === cat.name.toLowerCase(),
+                );
                 if (!existing) {
-                    const newCat = { id: cat.id || ('c_' + Date.now() + Math.random().toString(36).substr(2, 4)), name: cat.name };
+                    const newCat = {
+                        id:
+                            cat.id ||
+                            'c_' +
+                                Date.now() +
+                                Math.random().toString(36).substr(2, 4),
+                        name: cat.name,
+                    };
                     this.model.categories.push(newCat);
                     await this.model.exerciseRepo.saveCategory(newCat);
                     importedCategoriesCount++;
@@ -196,23 +250,36 @@ export class ImportExportService {
         if (Array.isArray(payload.exercises)) {
             for (const ex of payload.exercises) {
                 if (!ex || !ex.name) continue;
-                const existing = this.model.exercises.find(e => e.name.toLowerCase() === ex.name.toLowerCase());
+                const existing = this.model.exercises.find(
+                    (e) => e.name.toLowerCase() === ex.name.toLowerCase(),
+                );
                 if (!existing) {
                     let catId = ex.categoryId;
                     if (!catId && ex.category) {
-                        const cat = this.model.categories.find(c => c.name.toLowerCase() === ex.category.toLowerCase());
+                        const cat = this.model.categories.find(
+                            (c) =>
+                                c.name.toLowerCase() ===
+                                ex.category.toLowerCase(),
+                        );
                         catId = cat ? cat.id : 'c7';
                     }
                     const newEx = {
-                        id: ex.id || ('lib_' + Date.now() + Math.random().toString(36).substr(2, 4)),
+                        id:
+                            ex.id ||
+                            'lib_' +
+                                Date.now() +
+                                Math.random().toString(36).substr(2, 4),
                         name: ex.name,
                         categoryId: catId || 'c7',
-                        target: ex.target || ''
+                        target: ex.target || '',
                     };
                     this.model.exercises.push(newEx);
                     await this.model.exerciseRepo.saveExercise(newEx);
                     importedExercisesCount++;
-                } else if (ex.target && (!existing.target || existing.target === '-')) {
+                } else if (
+                    ex.target &&
+                    (!existing.target || existing.target === '-')
+                ) {
                     existing.target = ex.target;
                     await this.model.exerciseRepo.saveExercise(existing);
                 }
@@ -230,16 +297,30 @@ export class ImportExportService {
      */
     async _resolveOrCreateTemplateExercise(item) {
         if (typeof item === 'string') {
-            const byId = this.model.exercises.find(e => e.id === item);
+            const byId = this.model.exercises.find((e) => e.id === item);
             if (byId) {
-                return { exerciseId: byId.id, importedCategoriesCount: 0, importedExercisesCount: 0 };
+                return {
+                    exerciseId: byId.id,
+                    importedCategoriesCount: 0,
+                    importedExercisesCount: 0,
+                };
             }
-            const byName = this.model.exercises.find(e => e.name.toLowerCase() === item.toLowerCase());
+            const byName = this.model.exercises.find(
+                (e) => e.name.toLowerCase() === item.toLowerCase(),
+            );
             if (byName) {
-                return { exerciseId: byName.id, importedCategoriesCount: 0, importedExercisesCount: 0 };
+                return {
+                    exerciseId: byName.id,
+                    importedCategoriesCount: 0,
+                    importedExercisesCount: 0,
+                };
             }
             const newId = await this.model.addLibraryExercise(item, 'c7', '');
-            return { exerciseId: newId, importedCategoriesCount: 0, importedExercisesCount: 1 };
+            return {
+                exerciseId: newId,
+                importedCategoriesCount: 0,
+                importedExercisesCount: 1,
+            };
         }
 
         if (typeof item === 'object' && item !== null) {
@@ -252,9 +333,17 @@ export class ImportExportService {
 
             const catName = (item.category || item.categoryName || '').trim();
             if (catName) {
-                const cat = this.model.categories.find(c => c.name.toLowerCase() === catName.toLowerCase());
+                const cat = this.model.categories.find(
+                    (c) => c.name.toLowerCase() === catName.toLowerCase(),
+                );
                 if (!cat) {
-                    const newCat = { id: 'c_' + Date.now() + Math.random().toString(36).substr(2, 4), name: catName };
+                    const newCat = {
+                        id:
+                            'c_' +
+                            Date.now() +
+                            Math.random().toString(36).substr(2, 4),
+                        name: catName,
+                    };
                     this.model.categories.push(newCat);
                     await this.model.exerciseRepo.saveCategory(newCat);
                     targetCatId = newCat.id;
@@ -264,25 +353,41 @@ export class ImportExportService {
                 }
             }
 
-            const existingEx = this.model.exercises.find(e => e.name.toLowerCase() === exName.toLowerCase());
+            const existingEx = this.model.exercises.find(
+                (e) => e.name.toLowerCase() === exName.toLowerCase(),
+            );
             if (!existingEx) {
                 const newEx = {
-                    id: 'lib_' + Date.now() + Math.random().toString(36).substr(2, 4),
+                    id:
+                        'lib_' +
+                        Date.now() +
+                        Math.random().toString(36).substr(2, 4),
                     name: exName,
                     categoryId: targetCatId,
-                    target: item.target || ''
+                    target: item.target || '',
                 };
                 this.model.exercises.push(newEx);
                 await this.model.exerciseRepo.saveExercise(newEx);
                 importedExercisesCount++;
-                return { exerciseId: newEx.id, importedCategoriesCount, importedExercisesCount };
+                return {
+                    exerciseId: newEx.id,
+                    importedCategoriesCount,
+                    importedExercisesCount,
+                };
             }
 
-            if (item.target && (!existingEx.target || existingEx.target === '-')) {
+            if (
+                item.target &&
+                (!existingEx.target || existingEx.target === '-')
+            ) {
                 existingEx.target = item.target;
                 await this.model.exerciseRepo.saveExercise(existingEx);
             }
-            return { exerciseId: existingEx.id, importedCategoriesCount, importedExercisesCount };
+            return {
+                exerciseId: existingEx.id,
+                importedCategoriesCount,
+                importedExercisesCount,
+            };
         }
 
         return null;
@@ -301,8 +406,17 @@ export class ImportExportService {
         let importedExercisesCount = 0;
         let importedTemplatesCount = 0;
 
-        if (!Array.isArray(selectedIndices) || selectedIndices.length === 0 || !payload?.hasTemplates || !Array.isArray(payload.templates)) {
-            return { importedCategoriesCount, importedExercisesCount, importedTemplatesCount };
+        if (
+            !Array.isArray(selectedIndices) ||
+            selectedIndices.length === 0 ||
+            !payload?.hasTemplates ||
+            !Array.isArray(payload.templates)
+        ) {
+            return {
+                importedCategoriesCount,
+                importedExercisesCount,
+                importedTemplatesCount,
+            };
         }
 
         for (const idx of selectedIndices) {
@@ -312,8 +426,9 @@ export class ImportExportService {
             const uniqueName = this.getUniqueTemplateName(tpl.name);
             const templateExIds = [];
 
-            for (const item of (tpl.exerciseDetails || tpl.exercises || [])) {
-                const resolved = await this._resolveOrCreateTemplateExercise(item);
+            for (const item of tpl.exerciseDetails || tpl.exercises || []) {
+                const resolved =
+                    await this._resolveOrCreateTemplateExercise(item);
                 if (resolved?.exerciseId) {
                     templateExIds.push(resolved.exerciseId);
                     importedCategoriesCount += resolved.importedCategoriesCount;
@@ -322,9 +437,12 @@ export class ImportExportService {
             }
 
             const newTpl = {
-                id: 'tpl_' + Date.now() + Math.random().toString(36).substr(2, 4),
+                id:
+                    'tpl_' +
+                    Date.now() +
+                    Math.random().toString(36).substr(2, 4),
                 name: uniqueName,
-                exercises: templateExIds
+                exercises: templateExIds,
             };
             this.model.templates.push(newTpl);
             await this.model.templateRepo.save(newTpl);
@@ -334,7 +452,11 @@ export class ImportExportService {
             }
         }
 
-        return { importedCategoriesCount, importedExercisesCount, importedTemplatesCount };
+        return {
+            importedCategoriesCount,
+            importedExercisesCount,
+            importedTemplatesCount,
+        };
     }
 
     /**
@@ -347,7 +469,11 @@ export class ImportExportService {
     async _importWorkoutHistory(payload, templateIdMap) {
         let importedWorkoutsCount = 0;
 
-        if (!payload || !payload.hasHistory || !Array.isArray(payload.workouts)) {
+        if (
+            !payload ||
+            !payload.hasHistory ||
+            !Array.isArray(payload.workouts)
+        ) {
             return { importedWorkoutsCount };
         }
 
@@ -356,31 +482,44 @@ export class ImportExportService {
             const existing = await this.model.workoutRepo.get(w.id);
             const workoutToSave = { ...w };
             if (existing) {
-                workoutToSave.id = String(Date.now() + Math.random().toString(36).substr(2, 6));
+                workoutToSave.id = String(
+                    Date.now() + Math.random().toString(36).substr(2, 6),
+                );
             }
 
             let targetTemplateId = null;
             if (w.templateId && templateIdMap.has(w.templateId)) {
                 targetTemplateId = templateIdMap.get(w.templateId);
-            } else if (w.templateId && this.model.templates.some(t => t.id === w.templateId)) {
+            } else if (
+                w.templateId &&
+                this.model.templates.some((t) => t.id === w.templateId)
+            ) {
                 targetTemplateId = w.templateId;
             } else {
-                const payloadTpl = Array.isArray(payload.templates) ? payload.templates.find(t => t && t.id === w.templateId) : null;
+                const payloadTpl = Array.isArray(payload.templates)
+                    ? payload.templates.find((t) => t && t.id === w.templateId)
+                    : null;
                 if (payloadTpl?.name) {
-                    const matchedByName = this.model.templates.find(t => t.name.toLowerCase() === payloadTpl.name.toLowerCase());
+                    const matchedByName = this.model.templates.find(
+                        (t) =>
+                            t.name.toLowerCase() ===
+                            payloadTpl.name.toLowerCase(),
+                    );
                     if (matchedByName) targetTemplateId = matchedByName.id;
                 }
             }
 
             workoutToSave.templateId = targetTemplateId || w.templateId || null;
-            delete workoutToSave.templateName;
+            workoutToSave.templateName = undefined;
 
             await this.model.workoutRepo.save(workoutToSave);
             importedWorkoutsCount++;
         }
 
         if (payload.activeWorkoutId) {
-            const activeExists = await this.model.workoutRepo.get(payload.activeWorkoutId);
+            const activeExists = await this.model.workoutRepo.get(
+                payload.activeWorkoutId,
+            );
             if (activeExists) {
                 await this.model.loadActiveWorkout(payload.activeWorkoutId);
             }
@@ -397,7 +536,14 @@ export class ImportExportService {
         return { importedWorkoutsCount };
     }
 
-    async executeSelectiveImport({ importLibrary = false, selectedTemplateIndices = [], importHistory = false } = {}, payload = {}) {
+    async executeSelectiveImport(
+        {
+            importLibrary = false,
+            selectedTemplateIndices = [],
+            importHistory = false,
+        } = {},
+        payload = {},
+    ) {
         let importedCategoriesCount = 0;
         let importedExercisesCount = 0;
         let importedTemplatesCount = 0;
@@ -407,14 +553,23 @@ export class ImportExportService {
 
         // 1. Import library (categories & exercises)
         if (importLibrary && payload?.hasLibrary) {
-            const libResult = await this._importLibraryCategoriesAndExercises(payload);
+            const libResult =
+                await this._importLibraryCategoriesAndExercises(payload);
             importedCategoriesCount += libResult.importedCategoriesCount;
             importedExercisesCount += libResult.importedExercisesCount;
         }
 
         // 2. Import templates
-        if (Array.isArray(selectedTemplateIndices) && selectedTemplateIndices.length > 0 && payload?.hasTemplates) {
-            const tplResult = await this._importSelectedTemplates(selectedTemplateIndices, payload, templateIdMap);
+        if (
+            Array.isArray(selectedTemplateIndices) &&
+            selectedTemplateIndices.length > 0 &&
+            payload?.hasTemplates
+        ) {
+            const tplResult = await this._importSelectedTemplates(
+                selectedTemplateIndices,
+                payload,
+                templateIdMap,
+            );
             importedCategoriesCount += tplResult.importedCategoriesCount;
             importedExercisesCount += tplResult.importedExercisesCount;
             importedTemplatesCount += tplResult.importedTemplatesCount;
@@ -422,7 +577,10 @@ export class ImportExportService {
 
         // 3. Import workout history
         if (importHistory && payload?.hasHistory) {
-            const histResult = await this._importWorkoutHistory(payload, templateIdMap);
+            const histResult = await this._importWorkoutHistory(
+                payload,
+                templateIdMap,
+            );
             importedWorkoutsCount += histResult.importedWorkoutsCount;
         }
 
@@ -430,7 +588,7 @@ export class ImportExportService {
             importedCategoriesCount,
             importedExercisesCount,
             importedTemplatesCount,
-            importedWorkoutsCount
+            importedWorkoutsCount,
         };
     }
 }

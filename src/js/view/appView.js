@@ -1,11 +1,11 @@
-import { WorkoutView } from './workoutView.js';
-import { HistoryView } from './historyView.js';
-import { StatisticsView } from './statisticsView.js';
-import { SettingsView } from './settingsView.js';
-import { ExerciseModalView } from './exerciseModalView.js';
-import { ImportExportModalView } from './importExportModalView.js';
 import { STRINGS } from '../constants/strings.js';
 import { escapeHtml, formatLocalDate } from '../utils.js';
+import { ExerciseModalView } from './exerciseModalView.js';
+import { HistoryView } from './historyView.js';
+import { ImportExportModalView } from './importExportModalView.js';
+import { SettingsView } from './settingsView.js';
+import { StatisticsView } from './statisticsView.js';
+import { WorkoutView } from './workoutView.js';
 
 export class AppView {
     constructor() {
@@ -15,8 +15,10 @@ export class AppView {
         this.statisticsView = new StatisticsView();
         this.exerciseModalView = new ExerciseModalView();
         this.importExportModalView = new ImportExportModalView();
-        
-        this.timeContainer = document.getElementById('estimated-time-container');
+
+        this.timeContainer = document.getElementById(
+            'estimated-time-container',
+        );
 
         this.els = {
             mainNavbar: document.getElementById('main-navbar'),
@@ -28,15 +30,18 @@ export class AppView {
             btnNextWorkout: document.getElementById('btn-next-workout'),
             btnShowTemplates: document.getElementById('btn-show-templates'),
             tplOptionsUi: document.getElementById('template-options-ui'),
-            tplSelectionContainer: document.getElementById('template-selection-container'),
+            tplSelectionContainer: document.getElementById(
+                'template-selection-container',
+            ),
             btnCancelTpl: document.getElementById('btn-cancel-template'),
             btnConfirmTpl: document.getElementById('btn-confirm-template'),
             tabWorkout: document.getElementById('tab-workout'),
-            tplSelectDropdown: () => document.getElementById('template-select-dropdown'),
+            tplSelectDropdown: () =>
+                document.getElementById('template-select-dropdown'),
 
             // Keep child modal elements accessible for backward compatibility
             ...this.exerciseModalView.els,
-            ...this.importExportModalView.els
+            ...this.importExportModalView.els,
         };
     }
 
@@ -71,7 +76,7 @@ export class AppView {
 
     isTabActive(tabName) {
         const content = document.getElementById(`tab-${tabName}`);
-        return Boolean(content && content.classList.contains('active'));
+        return Boolean(content?.classList.contains('active'));
     }
 
     async renderActiveTab(model, statsService, tabName) {
@@ -108,15 +113,15 @@ export class AppView {
     updateProgress(model) {
         const workout = model.getActiveWorkout();
         let pct = 0;
-        
+
         if (workout && workout.exercises.length > 0) {
             let totalExpectedSets = 0;
             let totalCompletedSets = 0;
 
-            workout.exercises.forEach(ex => {
+            workout.exercises.forEach((ex) => {
                 const expectedSets = Math.max(3, ex.sets.length);
                 totalExpectedSets += expectedSets;
-                
+
                 if (ex.completed) {
                     totalCompletedSets += expectedSets;
                 } else {
@@ -125,26 +130,29 @@ export class AppView {
             });
 
             if (totalExpectedSets > 0) {
-                pct = Math.round((totalCompletedSets / totalExpectedSets) * 100);
+                pct = Math.round(
+                    (totalCompletedSets / totalExpectedSets) * 100,
+                );
             }
         }
-        
+
         this.els.mainNavbar.style.setProperty('--progress', `${pct}%`);
 
         const totalMinutes = Math.round((pct / 100) * 90);
         const hours = Math.floor(totalMinutes / 60);
         const mins = totalMinutes % 60;
-        
+
         const timeStr = `⏱️ ${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
-        
+
         if (this.timeContainer) {
             this.timeContainer.textContent = timeStr;
         }
     }
 
     async updateNavButtons(model) {
-        if (this.controller && this.controller.isDraftMode) {
-            if (this.els.btnPrevWorkout) this.els.btnPrevWorkout.disabled = true;
+        if (this.controller?.isDraftMode) {
+            if (this.els.btnPrevWorkout)
+                this.els.btnPrevWorkout.disabled = true;
             if (this.els.btnNextWorkout) {
                 this.els.btnNextWorkout.disabled = true;
                 this.els.btnNextWorkout.textContent = '+';
@@ -154,7 +162,8 @@ export class AppView {
         }
 
         if (!model.activeWorkoutId) {
-            if (this.els.btnPrevWorkout) this.els.btnPrevWorkout.disabled = true;
+            if (this.els.btnPrevWorkout)
+                this.els.btnPrevWorkout.disabled = true;
             if (this.els.btnNextWorkout) {
                 this.els.btnNextWorkout.disabled = true;
                 this.els.btnNextWorkout.textContent = '▶';
@@ -162,10 +171,17 @@ export class AppView {
             }
             return;
         }
-        const hasPrev = await model.getAdjacentWorkoutId(model.activeWorkoutId, -1);
-        const hasNext = await model.getAdjacentWorkoutId(model.activeWorkoutId, 1);
-        
-        if (this.els.btnPrevWorkout) this.els.btnPrevWorkout.disabled = !hasPrev;
+        const hasPrev = await model.getAdjacentWorkoutId(
+            model.activeWorkoutId,
+            -1,
+        );
+        const hasNext = await model.getAdjacentWorkoutId(
+            model.activeWorkoutId,
+            1,
+        );
+
+        if (this.els.btnPrevWorkout)
+            this.els.btnPrevWorkout.disabled = !hasPrev;
         if (this.els.btnNextWorkout) {
             if (!hasNext) {
                 this.els.btnNextWorkout.disabled = false;
@@ -180,14 +196,15 @@ export class AppView {
     }
 
     showWorkoutDraft(model) {
-        this.workoutView.titleEl.textContent = STRINGS.WORKOUT.TITLE_NEW_WORKOUT;
-        
+        this.workoutView.titleEl.textContent =
+            STRINGS.WORKOUT.TITLE_NEW_WORKOUT;
+
         const today = new Date();
         this.workoutView.dateInput.value = formatLocalDate(today);
         this.workoutView.dayInput.value = STRINGS.COMMON.DAYS[today.getDay()];
-        
+
         this.workoutView.container.innerHTML = '';
-        
+
         this.hideAddExerciseForm();
         if (this.els.btnShowAddEx) {
             this.els.btnShowAddEx.classList.add('d-none');
@@ -202,7 +219,12 @@ export class AppView {
 
         let optionsHtml = `<option value="empty">${STRINGS.WORKOUT.EMPTY_WORKOUT_OPTION}</option>`;
         if (model.templates && model.templates.length > 0) {
-            optionsHtml += model.templates.map(t => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}</option>`).join('');
+            optionsHtml += model.templates
+                .map(
+                    (t) =>
+                        `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}</option>`,
+                )
+                .join('');
         }
         this.els.tplOptionsUi.innerHTML = `<select id="template-select-dropdown" style="width:100%; padding:10px;">${optionsHtml}</select>`;
         this.els.tplSelectionContainer.classList.remove('d-none');
@@ -228,8 +250,8 @@ export class AppView {
         this.els.btnHamburger.addEventListener('click', toggleMenu);
         this.els.menuOverlay.addEventListener('click', toggleMenu);
 
-        this.els.sideMenu.addEventListener('click', e => {
-            if(e.target.classList.contains('nav-btn')) {
+        this.els.sideMenu.addEventListener('click', (e) => {
+            if (e.target.classList.contains('nav-btn')) {
                 window.location.hash = e.target.dataset.tab;
                 toggleMenu();
             }
@@ -237,28 +259,37 @@ export class AppView {
     }
 
     switchTab(tabName) {
-        ['workout', 'history', 'statistics', 'settings'].forEach(tab => {
+        ['workout', 'history', 'statistics', 'settings'].forEach((tab) => {
             const btn = document.querySelector(`.nav-btn[data-tab="${tab}"]`);
             const content = document.getElementById(`tab-${tab}`);
             if (btn) btn.classList.remove('active');
             if (content) content.classList.remove('active');
         });
-        
-        const activeBtn = document.querySelector(`.nav-btn[data-tab="${tabName}"]`);
+
+        const activeBtn = document.querySelector(
+            `.nav-btn[data-tab="${tabName}"]`,
+        );
         const activeContent = document.getElementById(`tab-${tabName}`);
-        
+
         if (activeBtn) activeBtn.classList.add('active');
         if (activeContent) activeContent.classList.add('active');
-        
-        const titles = { 'workout': 'Тренировка', 'history': 'История', 'statistics': 'Статистика', 'settings': 'Настройки' };
+
+        const titles = {
+            workout: 'Тренировка',
+            history: 'История',
+            statistics: 'Статистика',
+            settings: 'Настройки',
+        };
         this.els.pageTitle.innerText = titles[tabName] || 'Тренировка';
-        
+
         if (tabName !== 'workout') {
             this.els.mainNavbar.style.setProperty('--progress', '0%');
             if (this.timeContainer) this.timeContainer.classList.add('d-none');
         } else {
-            if (this.timeContainer) this.timeContainer.classList.remove('d-none');
-            if (this.controller?.model) this.updateProgress(this.controller.model);
+            if (this.timeContainer)
+                this.timeContainer.classList.remove('d-none');
+            if (this.controller?.model)
+                this.updateProgress(this.controller.model);
         }
     }
 
@@ -281,7 +312,11 @@ export class AppView {
     }
 
     showAddExerciseForm(categoryId, isLibraryOnly) {
-        this.exerciseModalView.show(categoryId, isLibraryOnly, this.controller?.model || null);
+        this.exerciseModalView.show(
+            categoryId,
+            isLibraryOnly,
+            this.controller?.model || null,
+        );
     }
 
     hideAddExerciseForm() {

@@ -24,17 +24,21 @@ export function wrapLine(line, maxLen = 80) {
 
     for (let i = 0; i < words.length; i++) {
         const word = words[i];
-        const lineIndent = (result.length === 0) ? indent : (indent + (indent ? '  ' : ''));
+        const lineIndent =
+            result.length === 0 ? indent : indent + (indent ? '  ' : '');
         const safeIndent = lineIndent.length >= maxLen - 5 ? '' : lineIndent;
 
-        const testLine = (current === indent || !current) ? (current + word) : (current + ' ' + word);
+        const testLine =
+            current === indent || !current
+                ? current + word
+                : current + ' ' + word;
         if (testLine.length <= maxLen) {
             current = testLine;
         } else {
             if (current && current !== indent) {
                 result.push(current);
             }
-            const nextIndent = (result.length === 0) ? indent : safeIndent;
+            const nextIndent = result.length === 0 ? indent : safeIndent;
             if ((nextIndent + word).length <= maxLen) {
                 current = nextIndent + word;
             } else {
@@ -88,14 +92,21 @@ export function generateAiPrompt(exportData) {
     const includedParts = [];
 
     if (exportData.exercises && exportData.exercises.length > 0) {
-        includedParts.push(`каталог упражнений (${exportData.exercises.length} упр.)`);
+        includedParts.push(
+            `каталог упражнений (${exportData.exercises.length} упр.)`,
+        );
     }
     if (exportData.templates && exportData.templates.length > 0) {
-        const tplNames = exportData.templates.map(t => `«${t.name}»`).join(', ');
+        const tplNames = exportData.templates
+            .map((t) => `«${t.name}»`)
+            .join(', ');
         includedParts.push(`шаблоны тренировок: ${tplNames}`);
     }
     if (exportData.workouts && exportData.workouts.length > 0) {
-        if (exportData.dateRange && (exportData.dateRange.startDate || exportData.dateRange.endDate)) {
+        if (
+            exportData.dateRange &&
+            (exportData.dateRange.startDate || exportData.dateRange.endDate)
+        ) {
             const { startDate, endDate } = exportData.dateRange;
             let rangeDesc = '';
             if (startDate && endDate) {
@@ -105,15 +116,20 @@ export function generateAiPrompt(exportData) {
             } else if (endDate) {
                 rangeDesc = `по ${endDate}`;
             }
-            includedParts.push(`история тренировок ${rangeDesc} (${exportData.workouts.length} записей)`);
+            includedParts.push(
+                `история тренировок ${rangeDesc} (${exportData.workouts.length} записей)`,
+            );
         } else {
-            includedParts.push(`история тренировок (${exportData.workouts.length} записей)`);
+            includedParts.push(
+                `история тренировок (${exportData.workouts.length} записей)`,
+            );
         }
     }
 
-    const dataDescription = includedParts.length > 0
-        ? includedParts.join(', ')
-        : 'тренировочные данные';
+    const dataDescription =
+        includedParts.length > 0
+            ? includedParts.join(', ')
+            : 'тренировочные данные';
 
     const doubleDivider = '='.repeat(80);
     const dashedDivider = '-'.repeat(80);
@@ -137,7 +153,7 @@ export function generateAiPrompt(exportData) {
         '      ]',
         '    }',
         '  ]',
-        '}'
+        '}',
     ];
 
     const actualJsonText = JSON.stringify(exportData, null, 2);
@@ -167,7 +183,7 @@ export function generateAiPrompt(exportData) {
         doubleDivider,
         '```json',
         actualJsonText,
-        '```'
+        '```',
     ];
 
     const combinedText = promptSections.join('\n');

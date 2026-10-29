@@ -3,10 +3,9 @@
  */
 export function debounce(func, wait) {
     let timeout;
-    return function(...args) {
-        const context = this;
+    return function (...args) {
         clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(context, args), wait);
+        timeout = setTimeout(() => func.apply(this, args), wait);
     };
 }
 
@@ -46,7 +45,11 @@ export function getDateRange(days) {
     const endDate = formatLocalDate(now);
     let startDate = '1970-01-01'; // По умолчанию - с начала времен
     if (days > 0) {
-        const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - days);
+        const start = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate() - days,
+        );
         startDate = formatLocalDate(start);
     }
     return { startDate, endDate };
@@ -87,18 +90,21 @@ export function escapeHtml(str) {
  * @returns {Promise<boolean>}
  */
 export async function copyToClipboard(text) {
-    if (navigator.clipboard && navigator.clipboard.writeText) {
+    if (navigator.clipboard?.writeText) {
         try {
             await navigator.clipboard.writeText(text);
             return true;
         } catch (e) {
-            console.warn('navigator.clipboard.writeText failed, using fallback', e);
+            console.warn(
+                'navigator.clipboard.writeText failed, using fallback',
+                e,
+            );
         }
     }
-    const textArea = document.createElement("textarea");
+    const textArea = document.createElement('textarea');
     textArea.value = text;
-    textArea.style.position = "fixed";
-    textArea.style.left = "-999999px";
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
     document.body.appendChild(textArea);
     textArea.focus();
     textArea.select();

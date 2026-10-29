@@ -34,10 +34,13 @@ export class ExerciseRepository {
 
     async getMigrationFlag() {
         const flag = await this.db.get(STORE.SETTINGS, 'isLegacyMigrated');
-        return Boolean(flag && flag.value);
+        return Boolean(flag?.value);
     }
 
     async setMigrationFlag(value = true) {
-        return await this.db.save(STORE.SETTINGS, { id: 'isLegacyMigrated', value });
+        return await this.db.save(STORE.SETTINGS, {
+            id: 'isLegacyMigrated',
+            value,
+        });
     }
 }

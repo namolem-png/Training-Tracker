@@ -1,11 +1,11 @@
+import { STRINGS } from './constants/strings.js';
 import { GymDatabase } from './db.js';
 import { AppModel } from './model.js';
-import { AppView } from './view/appView.js';
 import { injectPWA } from './pwa.js';
-import { STRINGS } from './constants/strings.js';
+import { generateAiPrompt } from './services/aiPromptService.js';
 import { StatisticsService } from './services/statisticsService.js';
 import { copyToClipboard, formatLocalDate, parseLocalDate } from './utils.js';
-import { generateAiPrompt } from './services/aiPromptService.js';
+import { AppView } from './view/appView.js';
 
 export class AppController {
     constructor(model, view) {
@@ -44,18 +44,26 @@ export class AppController {
         if (hash === 'workout' && this.isDraftMode) {
             this.view.showWorkoutDraft(this.model);
         } else {
-            await this.view.renderActiveTab(this.model, this.statsService, hash);
+            await this.view.renderActiveTab(
+                this.model,
+                this.statsService,
+                hash,
+            );
         }
     }
 
     async handleToggleComplete(exIndex, cardElement) {
         await this.model.toggleComplete(exIndex);
-        const isCompleted = this.model.getActiveWorkout().exercises[exIndex].completed;
+        const isCompleted =
+            this.model.getActiveWorkout().exercises[exIndex].completed;
         if (cardElement) {
             cardElement.classList.toggle('completed', isCompleted);
             this.view.updateProgress(this.model);
             if (this.view.isTabActive('statistics')) {
-                await this.view.statisticsView.render(this.model, this.statsService);
+                await this.view.statisticsView.render(
+                    this.model,
+                    this.statsService,
+                );
             }
         } else {
             await this.view.renderAll(this.model, this.statsService);
@@ -63,7 +71,8 @@ export class AppController {
     }
 
     async handleAddSet(exIndex, weight, reps, cardElement) {
-        if (!weight || !reps) return alert(STRINGS.MESSAGES.ERROR_NO_WEIGHT_REPS);
+        if (!weight || !reps)
+            return alert(STRINGS.MESSAGES.ERROR_NO_WEIGHT_REPS);
         const savePromise = this.model.addSet(exIndex, weight, reps);
         await this.updateWorkoutAndStats(exIndex, cardElement, true);
         await savePromise;
@@ -71,8 +80,10 @@ export class AppController {
 
     async handleEditSet(exIdx, setIdx, cardElement) {
         const w = this.model.getActiveWorkout().exercises[exIdx].sets[setIdx];
-        const newW = prompt("Новый вес (кг):", w.weight); if (newW === null) return;
-        const newR = prompt("Новые повторения:", w.reps); if (newR === null) return;
+        const newW = prompt('Новый вес (кг):', w.weight);
+        if (newW === null) return;
+        const newR = prompt('Новые повторения:', w.reps);
+        if (newR === null) return;
         if (newW.trim() && newR.trim()) {
             await this.model.editSet(exIdx, setIdx, newW, newR);
             await this.updateWorkoutAndStats(exIdx, cardElement);
@@ -92,14 +103,22 @@ export class AppController {
             this.view.workoutView.render(this.model);
             this.view.updateProgress(this.model);
             if (this.view.isTabActive('statistics')) {
-                await this.view.statisticsView.render(this.model, this.statsService);
+                await this.view.statisticsView.render(
+                    this.model,
+                    this.statsService,
+                );
             }
         }
     }
 
     async updateWorkoutAndStats(exIndex, cardElement, focusAddSet = false) {
         if (cardElement) {
-            this.view.workoutView.renderCardSets(this.model, exIndex, cardElement, focusAddSet);
+            this.view.workoutView.renderCardSets(
+                this.model,
+                exIndex,
+                cardElement,
+                focusAddSet,
+            );
         } else {
             this.view.workoutView.render(this.model);
             if (focusAddSet) {
@@ -108,7 +127,10 @@ export class AppController {
         }
         this.view.updateProgress(this.model);
         if (this.view.isTabActive('statistics')) {
-            await this.view.statisticsView.render(this.model, this.statsService);
+            await this.view.statisticsView.render(
+                this.model,
+                this.statsService,
+            );
         }
     }
 
@@ -127,7 +149,8 @@ export class AppController {
             if (d) {
                 const dayIndex = parseLocalDate(d).getDay();
                 if (!Number.isNaN(dayIndex) && STRINGS.COMMON.DAYS[dayIndex]) {
-                    this.view.workoutView.dayInput.value = STRINGS.COMMON.DAYS[dayIndex];
+                    this.view.workoutView.dayInput.value =
+                        STRINGS.COMMON.DAYS[dayIndex];
                 }
             }
             return;
@@ -136,14 +159,18 @@ export class AppController {
         const day = this.view.workoutView.dayInput.value;
         await this.model.updateWorkoutHeader(d, day);
         if (this.model.activeWorkout?.dayOfWeek) {
-            this.view.workoutView.dayInput.value = this.model.activeWorkout.dayOfWeek;
+            this.view.workoutView.dayInput.value =
+                this.model.activeWorkout.dayOfWeek;
         }
         this.view.historyView.render(this.model);
     }
 
     async navigateWorkout(dir) {
         if (this.isDraftMode) return;
-        const nextId = await this.model.getAdjacentWorkoutId(this.model.activeWorkoutId, dir);
+        const nextId = await this.model.getAdjacentWorkoutId(
+            this.model.activeWorkoutId,
+            dir,
+        );
         if (nextId) {
             await this.model.loadActiveWorkout(nextId);
             await this.view.renderAll(this.model, this.statsService);
@@ -152,7 +179,10 @@ export class AppController {
 
     async handleNextWorkout() {
         if (this.isDraftMode) return;
-        const nextId = await this.model.getAdjacentWorkoutId(this.model.activeWorkoutId, 1);
+        const nextId = await this.model.getAdjacentWorkoutId(
+            this.model.activeWorkoutId,
+            1,
+        );
         if (nextId) {
             await this.model.loadActiveWorkout(nextId);
             await this.view.renderAll(this.model, this.statsService);
@@ -178,7 +208,9 @@ export class AppController {
         this.isDraftMode = false;
         this.view.hideWorkoutDraft();
         if (this.previousWorkoutIdBeforeDraft) {
-            await this.model.loadActiveWorkout(this.previousWorkoutIdBeforeDraft);
+            await this.model.loadActiveWorkout(
+                this.previousWorkoutIdBeforeDraft,
+            );
         }
         this.previousWorkoutIdBeforeDraft = null;
         await this.view.renderAll(this.model, this.statsService);
@@ -188,7 +220,7 @@ export class AppController {
         if (!this.isDraftMode) return;
         const sel = this.view.els.tplSelectDropdown();
         const val = sel ? sel.value : 'empty';
-        const tplId = (val && val !== 'empty') ? val : null;
+        const tplId = val && val !== 'empty' ? val : null;
         const customDate = this.view.workoutView.dateInput.value;
         const customDay = this.view.workoutView.dayInput.value;
 
@@ -211,7 +243,7 @@ export class AppController {
     }
 
     async handleDeleteWorkout(id) {
-        if(confirm(STRINGS.MESSAGES.CONFIRM_DELETE_WORKOUT)) {
+        if (confirm(STRINGS.MESSAGES.CONFIRM_DELETE_WORKOUT)) {
             await this.model.deleteWorkout(id);
             await this.view.renderAll(this.model, this.statsService);
         }
@@ -219,7 +251,7 @@ export class AppController {
 
     async handleAddCategory(name) {
         if (!name.trim()) return;
-        if(await this.model.addCategory(name.trim())) {
+        if (await this.model.addCategory(name.trim())) {
             this.view.settingsView.render(this.model);
         } else {
             alert(STRINGS.MESSAGES.ERROR_CATEGORY_EXISTS);
@@ -235,12 +267,25 @@ export class AppController {
 
     async handleEditLibrary(id) {
         const ex = this.model.getLibraryExercise(id);
-        const name = prompt("Название:", ex.name); if(name===null) return;
-        const cat = prompt("Категория:", this.model.getCategoryName(ex.categoryId)); if(cat===null) return;
-        const target = prompt("Цель:", ex.target); if(target===null) return;
-        
-        const foundCat = this.model.categories.find(c => c.name === cat.trim());
-        await this.model.editLibraryExercise(id, name, foundCat ? foundCat.id : ex.categoryId, target);
+        const name = prompt('Название:', ex.name);
+        if (name === null) return;
+        const cat = prompt(
+            'Категория:',
+            this.model.getCategoryName(ex.categoryId),
+        );
+        if (cat === null) return;
+        const target = prompt('Цель:', ex.target);
+        if (target === null) return;
+
+        const foundCat = this.model.categories.find(
+            (c) => c.name === cat.trim(),
+        );
+        await this.model.editLibraryExercise(
+            id,
+            name,
+            foundCat ? foundCat.id : ex.categoryId,
+            target,
+        );
         await this.view.renderAll(this.model, this.statsService);
     }
 
@@ -267,7 +312,10 @@ export class AppController {
     async handleSaveNewExercise(isLibraryOnly) {
         if (isLibraryOnly) {
             const catId = this.view.els.newExCat.value;
-            if (!catId) return alert(STRINGS.MESSAGES.ERROR_NO_CATEGORY || 'Выберите категорию');
+            if (!catId)
+                return alert(
+                    STRINGS.MESSAGES.ERROR_NO_CATEGORY || 'Выберите категорию',
+                );
             const name = this.view.els.newExName.value.trim();
             if (!name) return alert(STRINGS.MESSAGES.ERROR_NO_NAME);
             const target = this.view.els.newExTarget.value.trim();
@@ -278,17 +326,27 @@ export class AppController {
         }
 
         const catId = this.view.els.newExCat.value;
-        if (!catId) return alert(STRINGS.MESSAGES.ERROR_NO_CATEGORY || 'Выберите категорию');
+        if (!catId)
+            return alert(
+                STRINGS.MESSAGES.ERROR_NO_CATEGORY || 'Выберите категорию',
+            );
 
         const libId = this.view.els.exLibSelect.value;
-        if (!libId) return alert(STRINGS.MESSAGES.ERROR_NO_EXERCISE || 'Выберите упражнение');
+        if (!libId)
+            return alert(
+                STRINGS.MESSAGES.ERROR_NO_EXERCISE || 'Выберите упражнение',
+            );
 
         let exerciseId = libId;
         if (libId === 'new') {
             const name = this.view.els.newExName.value.trim();
             if (!name) return alert(STRINGS.MESSAGES.ERROR_NO_NAME);
             const target = this.view.els.newExTarget.value.trim();
-            exerciseId = await this.model.addLibraryExercise(name, catId, target);
+            exerciseId = await this.model.addLibraryExercise(
+                name,
+                catId,
+                target,
+            );
         }
 
         await this.model.addExerciseToWorkout(exerciseId);
@@ -302,7 +360,8 @@ export class AppController {
 
     getExportSelection() {
         try {
-            const selection = this.view.importExportModalView.getExportSelection();
+            const selection =
+                this.view.importExportModalView.getExportSelection();
             if (!selection) {
                 alert(STRINGS.MESSAGES.ERROR_NO_SELECTION);
                 return null;
@@ -360,9 +419,11 @@ export class AppController {
                 dateSuffix = 'to_' + endDate;
             }
         }
-        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+        const blob = new Blob([JSON.stringify(data, null, 2)], {
+            type: 'application/json',
+        });
         const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
+        const a = document.createElement('a');
         a.href = url;
         a.download = 'gym_tracker_export_' + dateSuffix + '.json';
         a.click();
@@ -376,20 +437,24 @@ export class AppController {
     }
 
     async handleImportPasteClipboard() {
-        if (navigator.clipboard && navigator.clipboard.readText) {
+        if (navigator.clipboard?.readText) {
             try {
                 const text = await navigator.clipboard.readText();
-                if (text && text.trim()) {
+                if (text?.trim()) {
                     this.view.els.importJsonTextarea.value = text;
                     this.handleParseImportText();
                 } else {
                     alert('Буфер обмена пуст.');
                 }
             } catch (e) {
-                alert('Не удалось прочитать буфер обмена. Пожалуйста, вставьте текст в поле вручную (Ctrl+V).');
+                alert(
+                    'Не удалось прочитать буфер обмена. Пожалуйста, вставьте текст в поле вручную (Ctrl+V).',
+                );
             }
         } else {
-            alert('Чтение буфера обмена не поддерживается вашим браузером. Пожалуйста, вставьте текст в поле вручную.');
+            alert(
+                'Чтение буфера обмена не поддерживается вашим браузером. Пожалуйста, вставьте текст в поле вручную.',
+            );
         }
     }
 
@@ -447,13 +512,21 @@ export class AppController {
         }
 
         try {
-            const summary = await this.model.executeSelectiveImport(selection, this.currentParsedImportPayload);
+            const summary = await this.model.executeSelectiveImport(
+                selection,
+                this.currentParsedImportPayload,
+            );
 
             let msg = STRINGS.MESSAGES.IMPORT_SUCCESS;
             const details = [];
-            if (summary.importedTemplatesCount > 0) details.push(`Шаблонов: ${summary.importedTemplatesCount}`);
-            if (summary.importedExercisesCount > 0) details.push(`Новых упражнений: ${summary.importedExercisesCount}`);
-            if (summary.importedWorkoutsCount > 0) details.push(`Тренировок: ${summary.importedWorkoutsCount}`);
+            if (summary.importedTemplatesCount > 0)
+                details.push(`Шаблонов: ${summary.importedTemplatesCount}`);
+            if (summary.importedExercisesCount > 0)
+                details.push(
+                    `Новых упражнений: ${summary.importedExercisesCount}`,
+                );
+            if (summary.importedWorkoutsCount > 0)
+                details.push(`Тренировок: ${summary.importedWorkoutsCount}`);
             if (details.length > 0) {
                 msg += `\n(${details.join(', ')})`;
             }
@@ -476,7 +549,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const view = new AppView();
     const controller = new AppController(model, view);
     window.app = controller;
-    controller.init().catch(err => {
+    controller.init().catch((err) => {
         console.error('Ошибка инициализации приложения:', err);
     });
 });

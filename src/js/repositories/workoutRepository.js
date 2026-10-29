@@ -18,7 +18,13 @@ export class WorkoutRepository {
     }
 
     async getByPage(limit, offset, direction = 'prev') {
-        return await this.db.getByPage(STORE.WORKOUTS, 'date', limit, offset, direction);
+        return await this.db.getByPage(
+            STORE.WORKOUTS,
+            'date',
+            limit,
+            offset,
+            direction,
+        );
     }
 
     async getForMonth(year, month) {
@@ -27,16 +33,28 @@ export class WorkoutRepository {
         const lastDay = new Date(year, month + 1, 0).getDate();
         const endDate = `${year}-${monthStr}-${String(lastDay).padStart(2, '0')}`;
 
-        return await this.db.getInRange(STORE.WORKOUTS, 'date', startDate, endDate, 'prev');
+        return await this.db.getInRange(
+            STORE.WORKOUTS,
+            'date',
+            startDate,
+            endDate,
+            'prev',
+        );
     }
 
     async getInRange(startDate, endDate, direction = 'next') {
         if (startDate && endDate) {
             if (startDate > endDate) return [];
-            return await this.db.getInRange(STORE.WORKOUTS, 'date', startDate, endDate, direction);
+            return await this.db.getInRange(
+                STORE.WORKOUTS,
+                'date',
+                startDate,
+                endDate,
+                direction,
+            );
         }
         const all = await this.getAll();
-        return all.filter(w => {
+        return all.filter((w) => {
             const d = (w.date || '').split('T')[0];
             if (startDate && d < startDate) return false;
             if (endDate && d > endDate) return false;
@@ -47,7 +65,13 @@ export class WorkoutRepository {
     async getAdjacentId(id, direction) {
         const current = await this.get(id);
         if (!current) return null;
-        return await this.db.getAdjacentId(STORE.WORKOUTS, 'date', String(id), current.date, direction);
+        return await this.db.getAdjacentId(
+            STORE.WORKOUTS,
+            'date',
+            String(id),
+            current.date,
+            direction,
+        );
     }
 
     async save(workout) {
@@ -64,6 +88,9 @@ export class WorkoutRepository {
     }
 
     async saveActiveWorkoutId(id) {
-        return await this.db.save(STORE.SETTINGS, { id: 'activeWorkoutId', value: id });
+        return await this.db.save(STORE.SETTINGS, {
+            id: 'activeWorkoutId',
+            value: id,
+        });
     }
 }

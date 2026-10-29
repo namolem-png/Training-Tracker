@@ -1,4 +1,4 @@
-import { getDateRange, formatLocalDate, parseLocalDate } from '../utils.js';
+import { formatLocalDate, getDateRange, parseLocalDate } from '../utils.js';
 
 export class StatisticsService {
     constructor(model) {
@@ -9,8 +9,13 @@ export class StatisticsService {
      * Вспомогательный метод для кэширования результатов вычислений в SessionStorage.
      */
     async _withCache(methodName, params, computeFn) {
-        const lastWorkoutArr = await this.model.workoutRepo.getByPage(1, 0, 'prev');
-        const dataVersion = lastWorkoutArr.length > 0 ? lastWorkoutArr[0].id : 'empty';
+        const lastWorkoutArr = await this.model.workoutRepo.getByPage(
+            1,
+            0,
+            'prev',
+        );
+        const dataVersion =
+            lastWorkoutArr.length > 0 ? lastWorkoutArr[0].id : 'empty';
         const revision = this.model?.dataRevision ?? 0;
 
         const today = formatLocalDate();
@@ -31,7 +36,9 @@ export class StatisticsService {
             sessionStorage.setItem(cacheKey, JSON.stringify(result));
         } catch (e) {
             this._clearOldCache();
-            try { sessionStorage.setItem(cacheKey, JSON.stringify(result)); } catch (err) {}
+            try {
+                sessionStorage.setItem(cacheKey, JSON.stringify(result));
+            } catch (err) {}
         }
 
         return result;
@@ -44,11 +51,11 @@ export class StatisticsService {
         const keysToRemove = [];
         for (let i = 0; i < sessionStorage.length; i++) {
             const key = sessionStorage.key(i);
-            if (key && key.startsWith('gym_stats_')) {
+            if (key?.startsWith('gym_stats_')) {
                 keysToRemove.push(key);
             }
         }
-        keysToRemove.forEach(k => sessionStorage.removeItem(k));
+        keysToRemove.forEach((k) => sessionStorage.removeItem(k));
     }
 
     /**
@@ -66,42 +73,67 @@ export class StatisticsService {
      * Получает данные прогресса для конкретного упражнения
      */
     async getExerciseProgressData(exerciseId, metric, days = 0) {
-        return this._withCache('progress', { exerciseId, metric, days }, async () => {
-            const results = [];
-            const { startDate, endDate } = getDateRange(days);
-            const rangeWorkouts = await this.model.workoutRepo.getInRange(startDate, endDate);
+        return this._withCache(
+            'progress',
+            { exerciseId, metric, days },
+            async () => {
+                const results = [];
+                const { startDate, endDate } = getDateRange(days);
+                const rangeWorkouts = await this.model.workoutRepo.getInRange(
+                    startDate,
+                    endDate,
+                );
 
-            const sortedWorkouts = [...rangeWorkouts].sort((a, b) => new Date(a.date) - new Date(b.date));
+                const sortedWorkouts = [...rangeWorkouts].sort(
+                    (a, b) => new Date(a.date) - new Date(b.date),
+                );
 
-            sortedWorkouts.forEach(workout => {
-                const instance = workout.exercises.find(ex => ex.exerciseId === exerciseId);
-                if (!instance || !instance.sets || instance.sets.length === 0) return;
+                sortedWorkouts.forEach((workout) => {
+                    const instance = workout.exercises.find(
+                        (ex) => ex.exerciseId === exerciseId,
+                    );
+                    if (
+                        !instance ||
+                        !instance.sets ||
+                        instance.sets.length === 0
+                    )
+                        return;
 
-                const sets = instance.sets.map(s => ({ 
-                    weight: parseFloat(s.weight) || 0, 
-                    reps: parseInt(s.reps) || 0 
-                })).filter(s => s.reps > 0);
+                    const sets = instance.sets
+                        .map((s) => ({
+                            weight: Number.parseFloat(s.weight) || 0,
+                            reps: Number.parseInt(s.reps, 10) || 0,
+                        }))
+                        .filter((s) => s.reps > 0);
 
-                if (sets.length === 0) return;
+                    if (sets.length === 0) return;
 
-                let dayValue = 0;
-                if (metric === 'max') {
-                    dayValue = Math.max(...sets.map(s => s.weight));
-                } else if (metric === '1rm') {
-                    const calculated1RMs = sets.map(s => s.weight * (1 + s.reps / 30));
-                    dayValue = Math.round(Math.max(...calculated1RMs));
-                } else if (metric === 'avg') {
-                    const sum = sets.reduce((acc, s) => acc + s.weight, 0);
-                    dayValue = parseFloat((sum / sets.length).toFixed(1));
-                } else if (metric === 'tonnage') {
-                    dayValue = sets.reduce((acc, s) => acc + (s.weight * s.reps), 0);
-                }
+                    let dayValue = 0;
+                    if (metric === 'max') {
+                        dayValue = Math.max(...sets.map((s) => s.weight));
+                    } else if (metric === '1rm') {
+                        const calculated1RMs = sets.map(
+                            (s) => s.weight * (1 + s.reps / 30),
+                        );
+                        dayValue = Math.round(Math.max(...calculated1RMs));
+                    } else if (metric === 'avg') {
+                        const sum = sets.reduce((acc, s) => acc + s.weight, 0);
+                        dayValue = Number.parseFloat(
+                            (sum / sets.length).toFixed(1),
+                        );
+                    } else if (metric === 'tonnage') {
+                        dayValue = sets.reduce(
+                            (acc, s) => acc + s.weight * s.reps,
+                            0,
+                        );
+                    }
 
-                results.push({ date: workout.date, value: dayValue });
-            });
+                    results.push({ date: workout.date, value: dayValue });
+                });
 
-            return results;
-        });
+                return results;
+            },
+        );
     }
 
     /**
@@ -110,19 +142,25 @@ export class StatisticsService {
     async getOverallTonnageData(days = 0) {
         return this._withCache('overall_tonnage', { days }, async () => {
             const { startDate, endDate } = getDateRange(days);
-            const rangeWorkouts = await this.model.workoutRepo.getInRange(startDate, endDate);
+            const rangeWorkouts = await this.model.workoutRepo.getInRange(
+                startDate,
+                endDate,
+            );
 
-            return rangeWorkouts.map(w => {
-                let total = 0;
-                w.exercises.forEach(ex => {
-                    ex.sets.forEach(s => {
-                        total += (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0);
+            return rangeWorkouts
+                .map((w) => {
+                    let total = 0;
+                    w.exercises.forEach((ex) => {
+                        ex.sets.forEach((s) => {
+                            total +=
+                                (Number.parseFloat(s.weight) || 0) *
+                                (Number.parseInt(s.reps, 10) || 0);
+                        });
                     });
-                });
-                return { date: w.date, value: total };
-            })
-            .filter(data => data !== null)
-            .sort((a, b) => new Date(a.date) - new Date(b.date));
+                    return { date: w.date, value: total };
+                })
+                .filter((data) => data !== null)
+                .sort((a, b) => new Date(a.date) - new Date(b.date));
         });
     }
 
@@ -132,25 +170,37 @@ export class StatisticsService {
     async getCategoryTonnageData(days = 0) {
         return this._withCache('category_tonnage', { days }, async () => {
             const { startDate, endDate } = getDateRange(days);
-            const rangeWorkouts = await this.model.workoutRepo.getInRange(startDate, endDate);
+            const rangeWorkouts = await this.model.workoutRepo.getInRange(
+                startDate,
+                endDate,
+            );
 
-            return rangeWorkouts.map(w => {
-                const categories = {};
-                this.model.categories.forEach(c => categories[c.name] = 0);
+            return rangeWorkouts
+                .map((w) => {
+                    const categories = {};
+                    this.model.categories.forEach((c) => {
+                        categories[c.name] = 0;
+                    });
 
-                w.exercises.forEach(ex => {
-                    const libEx = this.model.getLibraryExercise(ex.exerciseId);
-                    const catName = this.model.getCategoryName(libEx.categoryId);
-                    if (categories.hasOwnProperty(catName)) {
-                        ex.sets.forEach(s => {
-                            categories[catName] += (parseFloat(s.weight) || 0) * (parseInt(s.reps) || 0);
-                        });
-                    }
-                });
-                return { date: w.date, categories };
-            })
-            .filter(data => data !== null)
-            .sort((a, b) => new Date(a.date) - new Date(b.date));
+                    w.exercises.forEach((ex) => {
+                        const libEx = this.model.getLibraryExercise(
+                            ex.exerciseId,
+                        );
+                        const catName = this.model.getCategoryName(
+                            libEx.categoryId,
+                        );
+                        if (Object.hasOwn(categories, catName)) {
+                            ex.sets.forEach((s) => {
+                                categories[catName] +=
+                                    (Number.parseFloat(s.weight) || 0) *
+                                    (Number.parseInt(s.reps, 10) || 0);
+                            });
+                        }
+                    });
+                    return { date: w.date, categories };
+                })
+                .filter((data) => data !== null)
+                .sort((a, b) => new Date(a.date) - new Date(b.date));
         });
     }
 
@@ -162,20 +212,24 @@ export class StatisticsService {
             const grouped = {};
             const usedExerciseIds = new Set();
             const allWorkouts = await this.model.workoutRepo.getAll();
-            allWorkouts.forEach(w => {
-                w.exercises.forEach(e => {
-                    if (e.sets && e.sets.some(s => (parseInt(s.reps) || 0) > 0)) {
+            allWorkouts.forEach((w) => {
+                w.exercises.forEach((e) => {
+                    if (
+                        e.sets?.some(
+                            (s) => (Number.parseInt(s.reps, 10) || 0) > 0,
+                        )
+                    ) {
                         usedExerciseIds.add(e.exerciseId);
                     }
                 });
             });
 
-            this.model.exercises.forEach(ex => {
+            this.model.exercises.forEach((ex) => {
                 if (!usedExerciseIds.has(ex.id)) return;
                 if (!grouped[ex.categoryId]) {
                     grouped[ex.categoryId] = {
                         categoryName: this.model.getCategoryName(ex.categoryId),
-                        exercises: []
+                        exercises: [],
                     };
                 }
                 grouped[ex.categoryId].exercises.push(ex);
@@ -187,17 +241,26 @@ export class StatisticsService {
     async getCategorySetsData(days) {
         return this._withCache('category_sets', { days }, async () => {
             const { startDate, endDate } = getDateRange(days);
-            const rangeWorkouts = await this.model.workoutRepo.getInRange(startDate, endDate);
+            const rangeWorkouts = await this.model.workoutRepo.getInRange(
+                startDate,
+                endDate,
+            );
 
             const stats = {};
-            this.model.categories.forEach(c => stats[c.name] = 0);
+            this.model.categories.forEach((c) => {
+                stats[c.name] = 0;
+            });
 
-            rangeWorkouts.forEach(w => {
-                w.exercises.forEach(ex => {
+            rangeWorkouts.forEach((w) => {
+                w.exercises.forEach((ex) => {
                     const libEx = this.model.getLibraryExercise(ex.exerciseId);
-                    const catName = this.model.getCategoryName(libEx.categoryId);
-                    if (stats.hasOwnProperty(catName)) {
-                        const validSets = ex.sets.filter(s => (parseInt(s.reps) || 0) > 0).length;
+                    const catName = this.model.getCategoryName(
+                        libEx.categoryId,
+                    );
+                    if (Object.hasOwn(stats, catName)) {
+                        const validSets = ex.sets.filter(
+                            (s) => (Number.parseInt(s.reps, 10) || 0) > 0,
+                        ).length;
                         stats[catName] += validSets;
                     }
                 });
@@ -211,7 +274,7 @@ export class StatisticsService {
             const allWorkouts = await this.model.workoutRepo.getAll();
             if (allWorkouts.length === 0) return 0;
             const weeksWithWorkouts = new Set();
-            allWorkouts.forEach(w => {
+            allWorkouts.forEach((w) => {
                 const d = parseLocalDate(w.date);
                 const dayNum = d.getDay();
                 d.setDate(d.getDate() - (dayNum === 0 ? 6 : dayNum - 1));
@@ -219,14 +282,24 @@ export class StatisticsService {
             });
             const now = new Date();
             const nowDay = now.getDay();
-            const currentWeekMondayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (nowDay === 0 ? 6 : nowDay - 1));
+            const currentWeekMondayDate = new Date(
+                now.getFullYear(),
+                now.getMonth(),
+                now.getDate() - (nowDay === 0 ? 6 : nowDay - 1),
+            );
             const currentWeekMonday = formatLocalDate(currentWeekMondayDate);
             const prevWeekMondayDate = new Date(currentWeekMondayDate);
             prevWeekMondayDate.setDate(prevWeekMondayDate.getDate() - 7);
             const prevWeekMonday = formatLocalDate(prevWeekMondayDate);
-            if (!weeksWithWorkouts.has(currentWeekMonday) && !weeksWithWorkouts.has(prevWeekMonday)) return 0;
+            if (
+                !weeksWithWorkouts.has(currentWeekMonday) &&
+                !weeksWithWorkouts.has(prevWeekMonday)
+            )
+                return 0;
             let streak = 0;
-            let checkDate = weeksWithWorkouts.has(currentWeekMonday) ? currentWeekMonday : prevWeekMonday;
+            let checkDate = weeksWithWorkouts.has(currentWeekMonday)
+                ? currentWeekMonday
+                : prevWeekMonday;
             while (weeksWithWorkouts.has(checkDate)) {
                 streak++;
                 const d = parseLocalDate(checkDate);
@@ -244,8 +317,8 @@ export class StatisticsService {
             let totalExercises = 0;
             let totalSets = 0;
 
-            allWorkouts.forEach(w => {
-                w.exercises.forEach(ex => {
+            allWorkouts.forEach((w) => {
+                w.exercises.forEach((ex) => {
                     if (ex.completed) totalExercises++;
                     totalSets += ex.sets.length;
                 });

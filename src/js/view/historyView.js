@@ -9,12 +9,25 @@ export class HistoryView {
     async render(model) {
         this.container.innerHTML = '';
         const fragment = document.createDocumentFragment();
-        
+
         const year = this.historyViewDate.getFullYear();
         const month = this.historyViewDate.getMonth();
-        const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
-        
-        const monthWorkouts = (await model.getWorkoutsForMonth(year, month));
+        const monthNames = [
+            'Январь',
+            'Февраль',
+            'Март',
+            'Апрель',
+            'Май',
+            'Июнь',
+            'Июль',
+            'Август',
+            'Сентябрь',
+            'Октябрь',
+            'Ноябрь',
+            'Декабрь',
+        ];
+
+        const monthWorkouts = await model.getWorkoutsForMonth(year, month);
 
         const controls = document.createElement('div');
         controls.className = 'calendar-controls';
@@ -28,7 +41,7 @@ export class HistoryView {
         const grid = document.createElement('div');
         grid.className = 'calendar-grid';
 
-        ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"].forEach(d => {
+        ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].forEach((d) => {
             const cell = document.createElement('div');
             cell.className = 'calendar-header-day';
             cell.textContent = d;
@@ -47,9 +60,9 @@ export class HistoryView {
 
         for (let day = 1; day <= daysInMonth; day++) {
             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-            const workouts = monthWorkouts.filter(w => w.date === dateStr);
+            const workouts = monthWorkouts.filter((w) => w.date === dateStr);
             const hasWorkout = workouts.length > 0;
-            
+
             const dayCell = document.createElement('div');
             dayCell.className = `calendar-day ${hasWorkout ? 'has-workout' : ''}`;
             dayCell.textContent = day;
@@ -77,13 +90,17 @@ export class HistoryView {
             empty.textContent = 'Тренировок не было.';
             fragment.appendChild(empty);
         } else {
-            monthWorkouts.forEach(w => fragment.appendChild(this.createHistoryCard(w, model.activeWorkoutId)));
+            monthWorkouts.forEach((w) =>
+                fragment.appendChild(
+                    this.createHistoryCard(w, model.activeWorkoutId),
+                ),
+            );
         }
         this.container.appendChild(fragment);
     }
 
     createHistoryCard(w, activeId) {
-        const completed = w.exercises.filter(e => e.completed).length;
+        const completed = w.exercises.filter((e) => e.completed).length;
         const isActive = w.id === activeId;
         const card = document.createElement('div');
         card.className = `history-card ${isActive ? 'active' : ''}`;
@@ -104,22 +121,29 @@ export class HistoryView {
     }
 
     bindEvents(controller) {
-        this.container.addEventListener('click', e => {
+        this.container.addEventListener('click', (e) => {
             const btn = e.target.closest('[data-action]');
             if (!btn) return;
-            switch(btn.dataset.action) {
-                case 'prev-month': 
-                    this.historyViewDate.setMonth(this.historyViewDate.getMonth() - 1);
+            switch (btn.dataset.action) {
+                case 'prev-month':
+                    this.historyViewDate.setMonth(
+                        this.historyViewDate.getMonth() - 1,
+                    );
                     this.render(controller.model);
                     break;
-                case 'next-month': 
-                    this.historyViewDate.setMonth(this.historyViewDate.getMonth() + 1);
+                case 'next-month':
+                    this.historyViewDate.setMonth(
+                        this.historyViewDate.getMonth() + 1,
+                    );
                     this.render(controller.model);
                     break;
-                case 'load-workout': controller.handleLoadWorkout(btn.dataset.id); break;
-                case 'delete-workout': 
+                case 'load-workout':
+                    controller.handleLoadWorkout(btn.dataset.id);
+                    break;
+                case 'delete-workout':
                     e.stopPropagation();
-                    controller.handleDeleteWorkout(btn.dataset.id); break;
+                    controller.handleDeleteWorkout(btn.dataset.id);
+                    break;
             }
         });
     }

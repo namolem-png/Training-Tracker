@@ -1,15 +1,23 @@
 export function injectPWA() {
-    if ('serviceWorker' in navigator && (window.location.protocol === 'http:' || window.location.protocol === 'https:')) {
+    if (
+        'serviceWorker' in navigator &&
+        (window.location.protocol === 'http:' ||
+            window.location.protocol === 'https:')
+    ) {
         window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js', { scope: './' })
-                .then(registration => {
-                    if (registration && registration.getNotifications) {
-                        registration.getNotifications().then(notifications => {
-                            notifications.forEach(n => n.close());
-                        }).catch(() => {});
+            navigator.serviceWorker
+                .register('./sw.js', { scope: './' })
+                .then((registration) => {
+                    if (registration?.getNotifications) {
+                        registration
+                            .getNotifications()
+                            .then((notifications) => {
+                                notifications.forEach((n) => n.close());
+                            })
+                            .catch(() => {});
                     }
                 })
-                .catch(err => {
+                .catch((err) => {
                     console.warn('Ошибка регистрации Service Worker:', err);
                 });
         });

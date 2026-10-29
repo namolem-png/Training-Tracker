@@ -1,7 +1,7 @@
 import { STRINGS } from './constants/strings.js';
-import { WorkoutRepository } from './repositories/workoutRepository.js';
 import { ExerciseRepository } from './repositories/exerciseRepository.js';
 import { TemplateRepository } from './repositories/templateRepository.js';
+import { WorkoutRepository } from './repositories/workoutRepository.js';
 import { ImportExportService } from './services/importExportService.js';
 import { formatLocalDate, parseLocalDate } from './utils.js';
 
@@ -35,11 +35,11 @@ export class AppModel {
 
     async init() {
         await this.db.init();
-        
+
         this.exercises = await this.exerciseRepo.getAllExercises();
         this.categories = await this.exerciseRepo.getAllCategories();
         this.templates = await this.templateRepo.getAll();
-        
+
         const savedId = await this.workoutRepo.getActiveWorkoutId();
         await this.loadActiveWorkout(savedId);
 
@@ -61,7 +61,11 @@ export class AppModel {
 
     async normalizeActiveWorkout() {
         const w = this.activeWorkout;
-        if (w && w.exercises && !Array.isArray(w.exercises) && typeof w.exercises === 'object') {
+        if (
+            w?.exercises &&
+            !Array.isArray(w.exercises) &&
+            typeof w.exercises === 'object'
+        ) {
             const flat = [];
             for (const cat in w.exercises) flat.push(...w.exercises[cat]);
             w.exercises = this.reorderExercisesByCategory(flat);
@@ -72,14 +76,14 @@ export class AppModel {
     async migrateLegacyExercises() {
         if (!this.exercises) this.exercises = [];
         const getCatId = (name) => {
-            const found = this.categories.find(c => c.name === name);
-            return found ? found.id : 'c7'; 
+            const found = this.categories.find((c) => c.name === name);
+            return found ? found.id : 'c7';
         };
 
         for (const ex of [...this.exercises]) {
             if (ex.cat) {
                 ex.categoryId = getCatId(ex.cat);
-                delete ex.cat;
+                ex.cat = undefined;
                 await this.exerciseRepo.saveExercise(ex);
             }
         }
@@ -122,17 +126,24 @@ export class AppModel {
         const workout = await this.workoutRepo.get(id);
         if (workout) {
             // Нормализация данных при загрузке
-            if (workout.exercises && !Array.isArray(workout.exercises) && typeof workout.exercises === 'object') {
+            if (
+                workout.exercises &&
+                !Array.isArray(workout.exercises) &&
+                typeof workout.exercises === 'object'
+            ) {
                 const flat = [];
-                for (const cat in workout.exercises) flat.push(...workout.exercises[cat]);
+                for (const cat in workout.exercises)
+                    flat.push(...workout.exercises[cat]);
                 workout.exercises = flat;
             }
-            workout.exercises = this.reorderExercisesByCategory(workout.exercises);
+            workout.exercises = this.reorderExercisesByCategory(
+                workout.exercises,
+            );
             if (workout.templateName !== undefined) {
-                delete workout.templateName;
+                workout.templateName = undefined;
                 await this.workoutRepo.save(workout);
             }
-            
+
             this.activeWorkout = workout;
             this.activeWorkoutId = String(id);
             await this.saveActiveWorkoutId(this.activeWorkoutId);
@@ -144,18 +155,24 @@ export class AppModel {
     }
 
     getCategoryName(id) {
-        const cat = this.categories.find(c => c.id === id);
+        const cat = this.categories.find((c) => c.id === id);
         return cat ? cat.name : STRINGS.MODEL.DEFAULT_CATEGORY;
     }
 
     getLibraryExercise(id) {
-        return this.exercises.find(e => e.id === id) || { name: STRINGS.MODEL.DELETED_EXERCISE, categoryId: 'c5', target: STRINGS.MODEL.TARGET_NONE };
+        return (
+            this.exercises.find((e) => e.id === id) || {
+                name: STRINGS.MODEL.DELETED_EXERCISE,
+                categoryId: 'c5',
+                target: STRINGS.MODEL.TARGET_NONE,
+            }
+        );
     }
 
     reorderExercisesByCategory(exercises) {
         if (!Array.isArray(exercises)) return exercises;
         const grouped = {};
-        const catOrder = this.categories.map(c => c.id);
+        const catOrder = this.categories.map((c) => c.id);
         const catOrderSet = new Set(catOrder);
         for (const ex of exercises) {
             const catId = this.getLibraryExercise(ex.exerciseId).categoryId;
@@ -163,25 +180,25 @@ export class AppModel {
             grouped[catId].push(ex);
         }
         const orderedIds = [
-            ...catOrder.filter(id => grouped[id]),
-            ...Object.keys(grouped).filter(id => !catOrderSet.has(id))
+            ...catOrder.filter((id) => grouped[id]),
+            ...Object.keys(grouped).filter((id) => !catOrderSet.has(id)),
         ];
-        return orderedIds.flatMap(id => grouped[id]);
+        return orderedIds.flatMap((id) => grouped[id]);
     }
 
     async addWorkout(templateId = null, customDate = null, customDay = null) {
         const today = new Date();
         const days = STRINGS.COMMON.DAYS;
         let initialExercises = [];
-        
+
         if (templateId) {
-            const template = this.templates.find(t => t.id === templateId);
+            const template = this.templates.find((t) => t.id === templateId);
             if (template) {
-                initialExercises = template.exercises.map(exId => ({
+                initialExercises = template.exercises.map((exId) => ({
                     id: 'inst_' + Date.now() + Math.random(),
                     exerciseId: exId,
                     completed: false,
-                    sets: []
+                    sets: [],
                 }));
             }
         }
@@ -194,7 +211,7 @@ export class AppModel {
             date: date,
             dayOfWeek: dayOfWeek,
             exercises: this.reorderExercisesByCategory(initialExercises),
-            templateId: templateId
+            templateId: templateId,
         };
 
         this.activeWorkout = newWorkout;
@@ -232,7 +249,8 @@ export class AppModel {
 
     async toggleComplete(exIndex) {
         const workout = this.getActiveWorkout();
-        workout.exercises[exIndex].completed = !workout.exercises[exIndex].completed;
+        workout.exercises[exIndex].completed =
+            !workout.exercises[exIndex].completed;
         await this.workoutRepo.save(workout);
         this.incrementDataRevision();
     }
@@ -271,7 +289,7 @@ export class AppModel {
             id: 'inst_' + Date.now(),
             exerciseId: exerciseId,
             completed: false,
-            sets: []
+            sets: [],
         });
         workout.exercises = this.reorderExercisesByCategory(workout.exercises);
         await this.workoutRepo.save(workout);
@@ -279,7 +297,11 @@ export class AppModel {
     }
 
     async addLibraryExercise(name, catId, target) {
-        let existing = this.exercises.find(e => e.name.toLowerCase() === name.toLowerCase() && e.categoryId === catId);
+        const existing = this.exercises.find(
+            (e) =>
+                e.name.toLowerCase() === name.toLowerCase() &&
+                e.categoryId === catId,
+        );
         if (existing) return existing.id;
 
         const exerciseId = 'lib_' + Date.now() + Math.random();
@@ -291,22 +313,24 @@ export class AppModel {
     }
 
     async editLibraryExercise(id, name, catId, target) {
-        const ex = this.exercises.find(e => e.id === id);
+        const ex = this.exercises.find((e) => e.id === id);
         if (ex) {
-            ex.name = name; ex.categoryId = catId; ex.target = target;
+            ex.name = name;
+            ex.categoryId = catId;
+            ex.target = target;
             await this.exerciseRepo.saveExercise(ex);
             this.incrementDataRevision();
         }
     }
 
     async deleteLibraryExercise(id) {
-        this.exercises = this.exercises.filter(e => e.id !== id);
+        this.exercises = this.exercises.filter((e) => e.id !== id);
         await this.exerciseRepo.deleteExercise(id);
         this.incrementDataRevision();
     }
 
     async addCategory(name) {
-        if (!this.categories.find(c => c.name === name)) {
+        if (!this.categories.find((c) => c.name === name)) {
             const newCat = { id: 'c_' + Date.now(), name };
             this.categories.push(newCat);
             await this.exerciseRepo.saveCategory(newCat);
@@ -317,7 +341,7 @@ export class AppModel {
     }
 
     async deleteCategory(id) {
-        this.categories = this.categories.filter(c => c.id !== id);
+        this.categories = this.categories.filter((c) => c.id !== id);
         await this.exerciseRepo.deleteCategory(id);
         this.incrementDataRevision();
     }
@@ -325,7 +349,7 @@ export class AppModel {
     async saveTemplate(id, name, exercises) {
         const templateData = { id: id || 'tpl_' + Date.now(), name, exercises };
         if (id) {
-            const idx = this.templates.findIndex(t => t.id === id);
+            const idx = this.templates.findIndex((t) => t.id === id);
             if (idx > -1) this.templates[idx] = templateData;
         } else {
             this.templates.push(templateData);
@@ -335,7 +359,7 @@ export class AppModel {
     }
 
     async deleteTemplate(id) {
-        this.templates = this.templates.filter(t => t.id !== id);
+        this.templates = this.templates.filter((t) => t.id !== id);
         await this.templateRepo.delete(id);
         this.incrementDataRevision();
     }
@@ -353,7 +377,10 @@ export class AppModel {
     }
 
     async executeSelectiveImport(options, payload) {
-        const result = await this.importExportService.executeSelectiveImport(options, payload);
+        const result = await this.importExportService.executeSelectiveImport(
+            options,
+            payload,
+        );
         this.incrementDataRevision();
         return result;
     }
