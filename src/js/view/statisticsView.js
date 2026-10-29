@@ -1,5 +1,5 @@
 import { STRINGS } from '../constants/strings.js';
-import { debounce, escapeHtml } from '../utils.js';
+import { debounce, escapeHtml, getPluralForm } from '../utils.js';
 import { NativeLineChart, NativePieChart, CHART_COLORS } from './charts.js';
 
 export class StatisticsView {
@@ -82,19 +82,9 @@ export class StatisticsView {
             return;
         }
 
-        const getWord = (num) => {
-            const forms = STRINGS.COMMON.UNITS.WEEK_FORMS;
-            let val = Math.abs(num) % 100;
-            if (val >= 5 && val <= 20) return forms[2];
-            val %= 10;
-            if (val === 1) return forms[0];
-            if (val >= 2 && val <= 4) return forms[1];
-            return forms[2];
-        };
-
         const streakText = STRINGS.STATISTICS.STREAK_TEMPLATE
             .replace('{n}', n)
-            .replace('{word}', getWord(n));
+            .replace('{word}', getPluralForm(n, STRINGS.COMMON.UNITS.WEEK_FORMS));
 
         this.streakContainer.innerHTML = `
             <div class="streak-plaque">
