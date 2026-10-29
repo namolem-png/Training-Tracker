@@ -70,16 +70,6 @@ export class AppModel {
             }
         }
 
-        if (this.activeWorkout) {
-            let changed = false;
-            for (const ex of this.activeWorkout.exercises) {
-                if (!ex.exerciseId) {
-                    changed = true;
-                }
-            }
-            if (changed) await this.workoutRepo.save(this.activeWorkout);
-        }
-
         await this.exerciseRepo.setMigrationFlag(true);
     }
 
@@ -335,13 +325,5 @@ export class AppModel {
 
     async executeSelectiveImport(options, payload) {
         return await this.importExportService.executeSelectiveImport(options, payload);
-    }
-
-    async getExportData() {
-        return await this.importExportService.getExportData();
-    }
-
-    async importData(importedData) {
-        return await this.importExportService.importData(importedData);
     }
 }

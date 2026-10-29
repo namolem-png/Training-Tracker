@@ -1,4 +1,4 @@
-import { GymDatabase, STORE } from './db.js';
+import { GymDatabase } from './db.js';
 import { AppModel } from './model.js';
 import { AppView } from './view/appView.js';
 import { injectPWA } from './pwa.js';
@@ -193,14 +193,6 @@ export class AppController {
         await this.view.renderAll(this.model, this.statsService);
     }
 
-    async handleStartWorkout(templateId) {
-        this.isDraftMode = false;
-        this.previousWorkoutIdBeforeDraft = null;
-        this.view.hideWorkoutDraft();
-        await this.model.addWorkout(templateId);
-        window.location.hash = 'workout';
-    }
-
     async handleLoadWorkout(id) {
         if (this.isDraftMode) {
             this.isDraftMode = false;
@@ -209,10 +201,6 @@ export class AppController {
         }
         await this.model.loadActiveWorkout(id);
         window.location.hash = 'workout';
-    }
-
-    async handleSaveSetting(key, value) {
-        await this.model.db.save(STORE.SETTINGS, { id: key, value: value });
     }
 
     async handleDeleteWorkout(id) {
@@ -305,10 +293,6 @@ export class AppController {
         await this.view.openExportModal(this.model);
     }
 
-    async handleExport() {
-        await this.handleOpenExport();
-    }
-
     getExportSelection() {
         try {
             const selection = this.view.importExportModalView.getExportSelection();
@@ -380,10 +364,6 @@ export class AppController {
     handleOpenImport() {
         this.currentParsedImportPayload = null;
         this.view.openImportModal();
-    }
-
-    handleImport() {
-        this.handleOpenImport();
     }
 
     async handleImportPasteClipboard() {
@@ -477,10 +457,6 @@ export class AppController {
             console.error('Ошибка сохранения импорта:', err);
             alert(STRINGS.MESSAGES.ERROR_IMPORT);
         }
-    }
-    
-    populateAddExForm(catId, isLibraryOnly) {
-        this.view.populateAddExForm(this.model, catId, isLibraryOnly);
     }
 }
 

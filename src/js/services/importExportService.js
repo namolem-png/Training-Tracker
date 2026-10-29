@@ -349,25 +349,4 @@ export class ImportExportService {
             importedWorkoutsCount
         };
     }
-
-    async getExportData() {
-        return {
-            workouts: await this.model.db.getAll(STORE.WORKOUTS),
-            exercises: this.model.exercises,
-            categories: this.model.categories,
-            templates: this.model.templates,
-            activeWorkoutId: this.model.activeWorkoutId
-        };
-    }
-
-    async importData(importedData) {
-        const stores = [STORE.WORKOUTS, STORE.EXERCISES, STORE.CATEGORIES, STORE.TEMPLATES, STORE.SETTINGS];
-        for (const store of stores) await this.model.db.clear(store);
-
-        if (importedData.workouts) for (const w of importedData.workouts) await this.model.db.save(STORE.WORKOUTS, w);
-        if (importedData.exercises) for (const e of importedData.exercises) await this.model.db.save(STORE.EXERCISES, e);
-        if (importedData.categories) for (const c of importedData.categories) await this.model.db.save(STORE.CATEGORIES, c);
-        if (importedData.templates) for (const t of importedData.templates) await this.model.db.save(STORE.TEMPLATES, t);
-        if (importedData.activeWorkoutId) await this.model.db.save(STORE.SETTINGS, { id: 'activeWorkoutId', value: importedData.activeWorkoutId });
-    }
 }

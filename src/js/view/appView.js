@@ -252,14 +252,6 @@ export class AppView {
         this.exerciseModalView.hide();
     }
 
-    updateExerciseList(model, catId) {
-        this.exerciseModalView.updateExerciseList(model, catId);
-    }
-
-    populateAddExForm(model, catId, isLibraryOnly) {
-        this.exerciseModalView.populateForm(model, catId, isLibraryOnly);
-    }
-
     async openExportModal(model) {
         await this.importExportModalView.openExportModal(model);
     }
