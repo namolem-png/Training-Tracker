@@ -170,16 +170,23 @@ export class ImportExportService {
         };
     }
 
-    async executeSelectiveImport({ importLibrary = false, selectedTemplateIndices = [], importHistory = false } = {}, payload) {
+    /**
+     * @private
+     * Imports library categories and exercises from payload.
+     * @param {Object} payload
+     * @returns {Promise<{ importedCategoriesCount: number, importedExercisesCount: number }>}
+     */
+    async _importLibraryCategoriesAndExercises(payload) {
         let importedCategoriesCount = 0;
         let importedExercisesCount = 0;
-        let importedTemplatesCount = 0;
-        let importedWorkoutsCount = 0;
 
-        // 1. Import library (categories & exercises)
-        if (importLibrary && payload.hasLibrary) {
+        if (!payload || !payload.hasLibrary) {
+            return { importedCategoriesCount, importedExercisesCount };
+        }
+
+        if (Array.isArray(payload.categories)) {
             for (const cat of payload.categories) {
-                if (!cat.name) continue;
+                if (!cat || !cat.name) continue;
                 const existing = this.model.categories.find(c => c.name.toLowerCase() === cat.name.toLowerCase());
                 if (!existing) {
                     const newCat = { id: cat.id || ('c_' + Date.now() + Math.random().toString(36).substr(2, 4)), name: cat.name };
@@ -188,9 +195,11 @@ export class ImportExportService {
                     importedCategoriesCount++;
                 }
             }
+        }
 
+        if (Array.isArray(payload.exercises)) {
             for (const ex of payload.exercises) {
-                if (!ex.name) continue;
+                if (!ex || !ex.name) continue;
                 const existing = this.model.exercises.find(e => e.name.toLowerCase() === ex.name.toLowerCase());
                 if (!existing) {
                     let catId = ex.categoryId;
@@ -214,132 +223,211 @@ export class ImportExportService {
             }
         }
 
-        // 2. Import templates
-        const templateIdMap = new Map();
-        if (Array.isArray(selectedTemplateIndices) && selectedTemplateIndices.length > 0 && payload.hasTemplates) {
-            for (const idx of selectedTemplateIndices) {
-                const tpl = payload.templates[idx];
-                if (!tpl) continue;
+        return { importedCategoriesCount, importedExercisesCount };
+    }
 
-                const uniqueName = this.getUniqueTemplateName(tpl.name);
-                const templateExIds = [];
+    /**
+     * @private
+     * Resolves an existing library exercise or creates a new one for a template item.
+     * @param {string|Object} item
+     * @returns {Promise<{ exerciseId: string, importedCategoriesCount: number, importedExercisesCount: number }|null>}
+     */
+    async _resolveOrCreateTemplateExercise(item) {
+        if (typeof item === 'string') {
+            const byId = this.model.exercises.find(e => e.id === item);
+            if (byId) {
+                return { exerciseId: byId.id, importedCategoriesCount: 0, importedExercisesCount: 0 };
+            }
+            const byName = this.model.exercises.find(e => e.name.toLowerCase() === item.toLowerCase());
+            if (byName) {
+                return { exerciseId: byName.id, importedCategoriesCount: 0, importedExercisesCount: 0 };
+            }
+            const newId = await this.model.addLibraryExercise(item, 'c7', '');
+            return { exerciseId: newId, importedCategoriesCount: 0, importedExercisesCount: 1 };
+        }
 
-                for (const item of (tpl.exerciseDetails || tpl.exercises || [])) {
-                    if (typeof item === 'string') {
-                        // Check if ID exists
-                        const byId = this.model.exercises.find(e => e.id === item);
-                        if (byId) {
-                            templateExIds.push(byId.id);
-                            continue;
-                        }
-                        // Check if name matches
-                        const byName = this.model.exercises.find(e => e.name.toLowerCase() === item.toLowerCase());
-                        if (byName) {
-                            templateExIds.push(byName.id);
-                            continue;
-                        }
-                        // Create new exercise
-                        const newId = await this.model.addLibraryExercise(item, 'c7', '');
-                        templateExIds.push(newId);
-                        importedExercisesCount++;
-                    } else if (typeof item === 'object' && item !== null) {
-                        const exName = (item.name || '').trim();
-                        if (!exName) continue;
+        if (typeof item === 'object' && item !== null) {
+            const exName = (item.name || '').trim();
+            if (!exName) return null;
 
-                        let targetCatId = 'c7';
-                        const catName = (item.category || item.categoryName || '').trim();
-                        if (catName) {
-                            let cat = this.model.categories.find(c => c.name.toLowerCase() === catName.toLowerCase());
-                            if (!cat) {
-                                const newCat = { id: 'c_' + Date.now() + Math.random().toString(36).substr(2, 4), name: catName };
-                                this.model.categories.push(newCat);
-                                await this.model.db.save(STORE.CATEGORIES, newCat);
-                                targetCatId = newCat.id;
-                                importedCategoriesCount++;
-                            } else {
-                                targetCatId = cat.id;
-                            }
-                        }
+            let targetCatId = 'c7';
+            let importedCategoriesCount = 0;
+            let importedExercisesCount = 0;
 
-                        let existingEx = this.model.exercises.find(e => e.name.toLowerCase() === exName.toLowerCase());
-                        if (!existingEx) {
-                            const newEx = {
-                                id: 'lib_' + Date.now() + Math.random().toString(36).substr(2, 4),
-                                name: exName,
-                                categoryId: targetCatId,
-                                target: item.target || ''
-                            };
-                            this.model.exercises.push(newEx);
-                            await this.model.db.save(STORE.EXERCISES, newEx);
-                            templateExIds.push(newEx.id);
-                            importedExercisesCount++;
-                        } else {
-                            if (item.target && (!existingEx.target || existingEx.target === '-')) {
-                                existingEx.target = item.target;
-                                await this.model.db.save(STORE.EXERCISES, existingEx);
-                            }
-                            templateExIds.push(existingEx.id);
-                        }
-                    }
+            const catName = (item.category || item.categoryName || '').trim();
+            if (catName) {
+                const cat = this.model.categories.find(c => c.name.toLowerCase() === catName.toLowerCase());
+                if (!cat) {
+                    const newCat = { id: 'c_' + Date.now() + Math.random().toString(36).substr(2, 4), name: catName };
+                    this.model.categories.push(newCat);
+                    await this.model.db.save(STORE.CATEGORIES, newCat);
+                    targetCatId = newCat.id;
+                    importedCategoriesCount++;
+                } else {
+                    targetCatId = cat.id;
                 }
+            }
 
-                const newTpl = {
-                    id: 'tpl_' + Date.now() + Math.random().toString(36).substr(2, 4),
-                    name: uniqueName,
-                    exercises: templateExIds
+            const existingEx = this.model.exercises.find(e => e.name.toLowerCase() === exName.toLowerCase());
+            if (!existingEx) {
+                const newEx = {
+                    id: 'lib_' + Date.now() + Math.random().toString(36).substr(2, 4),
+                    name: exName,
+                    categoryId: targetCatId,
+                    target: item.target || ''
                 };
-                this.model.templates.push(newTpl);
-                await this.model.db.save(STORE.TEMPLATES, newTpl);
-                importedTemplatesCount++;
-                if (tpl.id) {
-                    templateIdMap.set(tpl.id, newTpl.id);
+                this.model.exercises.push(newEx);
+                await this.model.db.save(STORE.EXERCISES, newEx);
+                importedExercisesCount++;
+                return { exerciseId: newEx.id, importedCategoriesCount, importedExercisesCount };
+            }
+
+            if (item.target && (!existingEx.target || existingEx.target === '-')) {
+                existingEx.target = item.target;
+                await this.model.db.save(STORE.EXERCISES, existingEx);
+            }
+            return { exerciseId: existingEx.id, importedCategoriesCount, importedExercisesCount };
+        }
+
+        return null;
+    }
+
+    /**
+     * @private
+     * Imports selected templates, resolving their exercises and updating templateIdMap.
+     * @param {Array<number>} selectedIndices
+     * @param {Object} payload
+     * @param {Map<string, string>} templateIdMap
+     * @returns {Promise<{ importedCategoriesCount: number, importedExercisesCount: number, importedTemplatesCount: number }>}
+     */
+    async _importSelectedTemplates(selectedIndices, payload, templateIdMap) {
+        let importedCategoriesCount = 0;
+        let importedExercisesCount = 0;
+        let importedTemplatesCount = 0;
+
+        if (!Array.isArray(selectedIndices) || selectedIndices.length === 0 || !payload?.hasTemplates || !Array.isArray(payload.templates)) {
+            return { importedCategoriesCount, importedExercisesCount, importedTemplatesCount };
+        }
+
+        for (const idx of selectedIndices) {
+            const tpl = payload.templates[idx];
+            if (!tpl) continue;
+
+            const uniqueName = this.getUniqueTemplateName(tpl.name);
+            const templateExIds = [];
+
+            for (const item of (tpl.exerciseDetails || tpl.exercises || [])) {
+                const resolved = await this._resolveOrCreateTemplateExercise(item);
+                if (resolved?.exerciseId) {
+                    templateExIds.push(resolved.exerciseId);
+                    importedCategoriesCount += resolved.importedCategoriesCount;
+                    importedExercisesCount += resolved.importedExercisesCount;
                 }
+            }
+
+            const newTpl = {
+                id: 'tpl_' + Date.now() + Math.random().toString(36).substr(2, 4),
+                name: uniqueName,
+                exercises: templateExIds
+            };
+            this.model.templates.push(newTpl);
+            await this.model.db.save(STORE.TEMPLATES, newTpl);
+            importedTemplatesCount++;
+            if (tpl.id) {
+                templateIdMap.set(tpl.id, newTpl.id);
             }
         }
 
-        // 3. Import workout history
-        if (importHistory && payload.hasHistory) {
-            for (const w of payload.workouts) {
-                const existing = await this.model.db.get(STORE.WORKOUTS, String(w.id));
-                const workoutToSave = { ...w };
-                if (existing) {
-                    workoutToSave.id = String(Date.now() + Math.random().toString(36).substr(2, 6));
-                }
+        return { importedCategoriesCount, importedExercisesCount, importedTemplatesCount };
+    }
 
-                let targetTemplateId = null;
-                if (w.templateId && templateIdMap.has(w.templateId)) {
-                    targetTemplateId = templateIdMap.get(w.templateId);
-                } else if (w.templateId && this.model.templates.some(t => t.id === w.templateId)) {
-                    targetTemplateId = w.templateId;
-                } else {
-                    const payloadTpl = Array.isArray(payload.templates) ? payload.templates.find(t => t && t.id === w.templateId) : null;
-                    if (payloadTpl && payloadTpl.name) {
-                        const matchedByName = this.model.templates.find(t => t.name.toLowerCase() === payloadTpl.name.toLowerCase());
-                        if (matchedByName) targetTemplateId = matchedByName.id;
-                    }
-                }
+    /**
+     * @private
+     * Imports workout history records, remapping template IDs and updating active workout.
+     * @param {Object} payload
+     * @param {Map<string, string>} templateIdMap
+     * @returns {Promise<{ importedWorkoutsCount: number }>}
+     */
+    async _importWorkoutHistory(payload, templateIdMap) {
+        let importedWorkoutsCount = 0;
 
-                workoutToSave.templateId = targetTemplateId || w.templateId || null;
-                delete workoutToSave.templateName;
+        if (!payload || !payload.hasHistory || !Array.isArray(payload.workouts)) {
+            return { importedWorkoutsCount };
+        }
 
-                await this.model.db.save(STORE.WORKOUTS, workoutToSave);
-                importedWorkoutsCount++;
+        for (const w of payload.workouts) {
+            if (!w) continue;
+            const existing = await this.model.db.get(STORE.WORKOUTS, String(w.id));
+            const workoutToSave = { ...w };
+            if (existing) {
+                workoutToSave.id = String(Date.now() + Math.random().toString(36).substr(2, 6));
             }
 
-            if (payload.activeWorkoutId) {
-                const activeExists = await this.model.db.get(STORE.WORKOUTS, String(payload.activeWorkoutId));
-                if (activeExists) {
-                    await this.model.loadActiveWorkout(payload.activeWorkoutId);
-                }
-            }
-            if (!this.model.activeWorkout) {
-                const recent = await this.model.getWorkoutsByPage(1, 0);
-                if (recent.length > 0) {
-                    await this.model.loadActiveWorkout(recent[0].id);
-                }
+            let targetTemplateId = null;
+            if (w.templateId && templateIdMap.has(w.templateId)) {
+                targetTemplateId = templateIdMap.get(w.templateId);
+            } else if (w.templateId && this.model.templates.some(t => t.id === w.templateId)) {
+                targetTemplateId = w.templateId;
             } else {
-                await this.model.loadActiveWorkout(this.model.activeWorkoutId);
+                const payloadTpl = Array.isArray(payload.templates) ? payload.templates.find(t => t && t.id === w.templateId) : null;
+                if (payloadTpl?.name) {
+                    const matchedByName = this.model.templates.find(t => t.name.toLowerCase() === payloadTpl.name.toLowerCase());
+                    if (matchedByName) targetTemplateId = matchedByName.id;
+                }
             }
+
+            workoutToSave.templateId = targetTemplateId || w.templateId || null;
+            delete workoutToSave.templateName;
+
+            await this.model.db.save(STORE.WORKOUTS, workoutToSave);
+            importedWorkoutsCount++;
+        }
+
+        if (payload.activeWorkoutId) {
+            const activeExists = await this.model.db.get(STORE.WORKOUTS, String(payload.activeWorkoutId));
+            if (activeExists) {
+                await this.model.loadActiveWorkout(payload.activeWorkoutId);
+            }
+        }
+        if (!this.model.activeWorkout) {
+            const recent = await this.model.getWorkoutsByPage(1, 0);
+            if (recent.length > 0) {
+                await this.model.loadActiveWorkout(recent[0].id);
+            }
+        } else {
+            await this.model.loadActiveWorkout(this.model.activeWorkoutId);
+        }
+
+        return { importedWorkoutsCount };
+    }
+
+    async executeSelectiveImport({ importLibrary = false, selectedTemplateIndices = [], importHistory = false } = {}, payload = {}) {
+        let importedCategoriesCount = 0;
+        let importedExercisesCount = 0;
+        let importedTemplatesCount = 0;
+        let importedWorkoutsCount = 0;
+
+        const templateIdMap = new Map();
+
+        // 1. Import library (categories & exercises)
+        if (importLibrary && payload?.hasLibrary) {
+            const libResult = await this._importLibraryCategoriesAndExercises(payload);
+            importedCategoriesCount += libResult.importedCategoriesCount;
+            importedExercisesCount += libResult.importedExercisesCount;
+        }
+
+        // 2. Import templates
+        if (Array.isArray(selectedTemplateIndices) && selectedTemplateIndices.length > 0 && payload?.hasTemplates) {
+            const tplResult = await this._importSelectedTemplates(selectedTemplateIndices, payload, templateIdMap);
+            importedCategoriesCount += tplResult.importedCategoriesCount;
+            importedExercisesCount += tplResult.importedExercisesCount;
+            importedTemplatesCount += tplResult.importedTemplatesCount;
+        }
+
+        // 3. Import workout history
+        if (importHistory && payload?.hasHistory) {
+            const histResult = await this._importWorkoutHistory(payload, templateIdMap);
+            importedWorkoutsCount += histResult.importedWorkoutsCount;
         }
 
         return {
