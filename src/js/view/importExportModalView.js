@@ -1,6 +1,5 @@
 import { getDateRange, getPluralForm, escapeHtml, debounce } from '../utils.js';
 import { STRINGS } from '../constants/strings.js';
-import { STORE } from '../db.js';
 
 export class ImportExportModalView {
     constructor() {
@@ -129,7 +128,7 @@ export class ImportExportModalView {
         if (!this.els.exportOptionsList) return;
         this.cachedWorkouts = model.workoutRepo
             ? await model.workoutRepo.getAll()
-            : (model.db ? await model.db.getAll(STORE.WORKOUTS) : []);
+            : [];
 
         this.els.exportOptionsList.innerHTML = '';
         const frag = document.createDocumentFragment();

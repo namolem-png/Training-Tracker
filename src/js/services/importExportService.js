@@ -1,5 +1,3 @@
-import { STORE } from '../db.js';
-
 export class ImportExportService {
     constructor(model) {
         this.model = model;
@@ -52,9 +50,7 @@ export class ImportExportService {
         }
 
         if (includeHistory) {
-            let workouts = this.model.workoutRepo
-                ? await this.model.workoutRepo.getAll()
-                : await this.model.db.getAll(STORE.WORKOUTS);
+            let workouts = await this.model.workoutRepo.getAll();
 
             if (historyDateRange && (historyDateRange.startDate || historyDateRange.endDate)) {
                 const { startDate, endDate } = historyDateRange;
@@ -191,7 +187,7 @@ export class ImportExportService {
                 if (!existing) {
                     const newCat = { id: cat.id || ('c_' + Date.now() + Math.random().toString(36).substr(2, 4)), name: cat.name };
                     this.model.categories.push(newCat);
-                    await this.model.db.save(STORE.CATEGORIES, newCat);
+                    await this.model.exerciseRepo.saveCategory(newCat);
                     importedCategoriesCount++;
                 }
             }
@@ -214,11 +210,11 @@ export class ImportExportService {
                         target: ex.target || ''
                     };
                     this.model.exercises.push(newEx);
-                    await this.model.db.save(STORE.EXERCISES, newEx);
+                    await this.model.exerciseRepo.saveExercise(newEx);
                     importedExercisesCount++;
                 } else if (ex.target && (!existing.target || existing.target === '-')) {
                     existing.target = ex.target;
-                    await this.model.db.save(STORE.EXERCISES, existing);
+                    await this.model.exerciseRepo.saveExercise(existing);
                 }
             }
         }
@@ -260,7 +256,7 @@ export class ImportExportService {
                 if (!cat) {
                     const newCat = { id: 'c_' + Date.now() + Math.random().toString(36).substr(2, 4), name: catName };
                     this.model.categories.push(newCat);
-                    await this.model.db.save(STORE.CATEGORIES, newCat);
+                    await this.model.exerciseRepo.saveCategory(newCat);
                     targetCatId = newCat.id;
                     importedCategoriesCount++;
                 } else {
@@ -277,14 +273,14 @@ export class ImportExportService {
                     target: item.target || ''
                 };
                 this.model.exercises.push(newEx);
-                await this.model.db.save(STORE.EXERCISES, newEx);
+                await this.model.exerciseRepo.saveExercise(newEx);
                 importedExercisesCount++;
                 return { exerciseId: newEx.id, importedCategoriesCount, importedExercisesCount };
             }
 
             if (item.target && (!existingEx.target || existingEx.target === '-')) {
                 existingEx.target = item.target;
-                await this.model.db.save(STORE.EXERCISES, existingEx);
+                await this.model.exerciseRepo.saveExercise(existingEx);
             }
             return { exerciseId: existingEx.id, importedCategoriesCount, importedExercisesCount };
         }
@@ -331,7 +327,7 @@ export class ImportExportService {
                 exercises: templateExIds
             };
             this.model.templates.push(newTpl);
-            await this.model.db.save(STORE.TEMPLATES, newTpl);
+            await this.model.templateRepo.save(newTpl);
             importedTemplatesCount++;
             if (tpl.id) {
                 templateIdMap.set(tpl.id, newTpl.id);
@@ -357,7 +353,7 @@ export class ImportExportService {
 
         for (const w of payload.workouts) {
             if (!w) continue;
-            const existing = await this.model.db.get(STORE.WORKOUTS, String(w.id));
+            const existing = await this.model.workoutRepo.get(w.id);
             const workoutToSave = { ...w };
             if (existing) {
                 workoutToSave.id = String(Date.now() + Math.random().toString(36).substr(2, 6));
@@ -379,12 +375,12 @@ export class ImportExportService {
             workoutToSave.templateId = targetTemplateId || w.templateId || null;
             delete workoutToSave.templateName;
 
-            await this.model.db.save(STORE.WORKOUTS, workoutToSave);
+            await this.model.workoutRepo.save(workoutToSave);
             importedWorkoutsCount++;
         }
 
         if (payload.activeWorkoutId) {
-            const activeExists = await this.model.db.get(STORE.WORKOUTS, String(payload.activeWorkoutId));
+            const activeExists = await this.model.workoutRepo.get(payload.activeWorkoutId);
             if (activeExists) {
                 await this.model.loadActiveWorkout(payload.activeWorkoutId);
             }

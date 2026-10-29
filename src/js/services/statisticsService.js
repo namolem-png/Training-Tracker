@@ -1,4 +1,3 @@
-import { STORE } from '../db.js';
 import { getDateRange, formatLocalDate, parseLocalDate } from '../utils.js';
 
 export class StatisticsService {
@@ -10,7 +9,7 @@ export class StatisticsService {
      * Вспомогательный метод для кэширования результатов вычислений в SessionStorage.
      */
     async _withCache(methodName, params, computeFn) {
-        const lastWorkoutArr = await this.model.db.getByPage(STORE.WORKOUTS, 'date', 1, 0, 'prev');
+        const lastWorkoutArr = await this.model.workoutRepo.getByPage(1, 0, 'prev');
         const dataVersion = lastWorkoutArr.length > 0 ? lastWorkoutArr[0].id : 'empty';
 
         const today = formatLocalDate();
@@ -53,7 +52,7 @@ export class StatisticsService {
         return this._withCache('progress', { exerciseId, metric, days }, async () => {
             const results = [];
             const { startDate, endDate } = getDateRange(days);
-            const rangeWorkouts = await this.model.db.getInRange(STORE.WORKOUTS, 'date', startDate, endDate);
+            const rangeWorkouts = await this.model.workoutRepo.getInRange(startDate, endDate);
 
             const sortedWorkouts = [...rangeWorkouts].sort((a, b) => new Date(a.date) - new Date(b.date));
 
@@ -94,7 +93,7 @@ export class StatisticsService {
     async getOverallTonnageData(days = 0) {
         return this._withCache('overall_tonnage', { days }, async () => {
             const { startDate, endDate } = getDateRange(days);
-            const rangeWorkouts = await this.model.db.getInRange(STORE.WORKOUTS, 'date', startDate, endDate);
+            const rangeWorkouts = await this.model.workoutRepo.getInRange(startDate, endDate);
 
             return rangeWorkouts.map(w => {
                 let total = 0;
@@ -116,7 +115,7 @@ export class StatisticsService {
     async getCategoryTonnageData(days = 0) {
         return this._withCache('category_tonnage', { days }, async () => {
             const { startDate, endDate } = getDateRange(days);
-            const rangeWorkouts = await this.model.db.getInRange(STORE.WORKOUTS, 'date', startDate, endDate);
+            const rangeWorkouts = await this.model.workoutRepo.getInRange(startDate, endDate);
 
             return rangeWorkouts.map(w => {
                 const categories = {};
@@ -145,7 +144,7 @@ export class StatisticsService {
         return this._withCache('grouped_lib', {}, async () => {
             const grouped = {};
             const usedExerciseIds = new Set();
-            const allWorkouts = await this.model.db.getAll(STORE.WORKOUTS);
+            const allWorkouts = await this.model.workoutRepo.getAll();
             allWorkouts.forEach(w => {
                 w.exercises.forEach(e => {
                     if (e.sets && e.sets.some(s => (parseInt(s.reps) || 0) > 0)) {
@@ -171,7 +170,7 @@ export class StatisticsService {
     async getCategorySetsData(days) {
         return this._withCache('category_sets', { days }, async () => {
             const { startDate, endDate } = getDateRange(days);
-            const rangeWorkouts = await this.model.db.getInRange(STORE.WORKOUTS, 'date', startDate, endDate);
+            const rangeWorkouts = await this.model.workoutRepo.getInRange(startDate, endDate);
 
             const stats = {};
             this.model.categories.forEach(c => stats[c.name] = 0);
@@ -192,7 +191,7 @@ export class StatisticsService {
 
     async getConsecutiveWeeks() {
         return this._withCache('consecutive_weeks', {}, async () => {
-            const allWorkouts = await this.model.db.getAll(STORE.WORKOUTS);
+            const allWorkouts = await this.model.workoutRepo.getAll();
             if (allWorkouts.length === 0) return 0;
             const weeksWithWorkouts = new Set();
             allWorkouts.forEach(w => {
@@ -223,7 +222,7 @@ export class StatisticsService {
 
     async getGeneralStats() {
         return this._withCache('general_stats', {}, async () => {
-            const allWorkouts = await this.model.db.getAll(STORE.WORKOUTS);
+            const allWorkouts = await this.model.workoutRepo.getAll();
             const totalWorkouts = allWorkouts.length;
             let totalExercises = 0;
             let totalSets = 0;
