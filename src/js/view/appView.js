@@ -5,7 +5,7 @@ import { SettingsView } from './settingsView.js';
 import { ExerciseModalView } from './exerciseModalView.js';
 import { ImportExportModalView } from './importExportModalView.js';
 import { STRINGS } from '../constants/strings.js';
-import { escapeHtml } from '../utils.js';
+import { escapeHtml, formatLocalDate } from '../utils.js';
 
 export class AppView {
     constructor() {
@@ -147,7 +147,7 @@ export class AppView {
         this.workoutView.titleEl.textContent = STRINGS.WORKOUT.TITLE_NEW_WORKOUT;
         
         const today = new Date();
-        this.workoutView.dateInput.value = today.toISOString().split('T')[0];
+        this.workoutView.dateInput.value = formatLocalDate(today);
         this.workoutView.dayInput.value = STRINGS.COMMON.DAYS[today.getDay()];
         
         this.workoutView.container.innerHTML = '';

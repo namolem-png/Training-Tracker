@@ -1,5 +1,5 @@
 import { STORE } from '../db.js';
-import { getDateRange } from '../utils.js';
+import { getDateRange, formatLocalDate, parseLocalDate } from '../utils.js';
 
 export class StatisticsService {
     constructor(model) {
@@ -13,7 +13,7 @@ export class StatisticsService {
         const lastWorkoutArr = await this.model.db.getByPage(STORE.WORKOUTS, 'date', 1, 0, 'prev');
         const dataVersion = lastWorkoutArr.length > 0 ? lastWorkoutArr[0].id : 'empty';
 
-        const today = new Date().toISOString().split('T')[0];
+        const today = formatLocalDate();
         const cacheKey = `gym_stats_${methodName}_${JSON.stringify(params)}_${dataVersion}_${today}`;
 
         const cached = sessionStorage.getItem(cacheKey);
@@ -196,27 +196,26 @@ export class StatisticsService {
             if (allWorkouts.length === 0) return 0;
             const weeksWithWorkouts = new Set();
             allWorkouts.forEach(w => {
-                const [year, month, day] = w.date.split('-').map(Number);
-                const d = new Date(year, month - 1, day);
+                const d = parseLocalDate(w.date);
                 const dayNum = d.getDay();
-                const monday = new Date(d.setDate(d.getDate() - (dayNum === 0 ? 6 : dayNum - 1))).toISOString().split('T')[0];
-                weeksWithWorkouts.add(monday);
+                d.setDate(d.getDate() - (dayNum === 0 ? 6 : dayNum - 1));
+                weeksWithWorkouts.add(formatLocalDate(d));
             });
             const now = new Date();
             const nowDay = now.getDay();
             const currentWeekMondayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (nowDay === 0 ? 6 : nowDay - 1));
-            const currentWeekMonday = currentWeekMondayDate.toISOString().split('T')[0];
+            const currentWeekMonday = formatLocalDate(currentWeekMondayDate);
             const prevWeekMondayDate = new Date(currentWeekMondayDate);
             prevWeekMondayDate.setDate(prevWeekMondayDate.getDate() - 7);
-            const prevWeekMonday = prevWeekMondayDate.toISOString().split('T')[0];
+            const prevWeekMonday = formatLocalDate(prevWeekMondayDate);
             if (!weeksWithWorkouts.has(currentWeekMonday) && !weeksWithWorkouts.has(prevWeekMonday)) return 0;
             let streak = 0;
             let checkDate = weeksWithWorkouts.has(currentWeekMonday) ? currentWeekMonday : prevWeekMonday;
             while (weeksWithWorkouts.has(checkDate)) {
                 streak++;
-                const d = new Date(checkDate);
+                const d = parseLocalDate(checkDate);
                 d.setDate(d.getDate() - 7);
-                checkDate = d.toISOString().split('T')[0];
+                checkDate = formatLocalDate(d);
             }
             return streak;
         });

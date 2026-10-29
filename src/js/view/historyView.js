@@ -1,4 +1,4 @@
-import { escapeHtml } from '../utils.js';
+import { escapeHtml, parseLocalDate } from '../utils.js';
 
 export class HistoryView {
     constructor() {
@@ -92,7 +92,7 @@ export class HistoryView {
 
         card.innerHTML = `
             <div class="flex-1">
-                <p class="history-date">${new Date(w.date).toLocaleDateString('ru-RU')} (${escapeHtml(w.dayOfWeek)})</p>
+                <p class="history-date">${parseLocalDate(w.date).toLocaleDateString('ru-RU')} (${escapeHtml(w.dayOfWeek)})</p>
                 <p class="history-stats">Выполнено: ${completed} из ${w.exercises.length}</p>
             </div>
             <div class="d-flex align-center gap-15">

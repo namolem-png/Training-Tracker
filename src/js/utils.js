@@ -11,18 +11,43 @@ export function debounce(func, wait) {
 }
 
 /**
+ * Formats a Date object as YYYY-MM-DD in local time.
+ * @param {Date} [d=new Date()]
+ * @returns {string} YYYY-MM-DD in local time
+ */
+export function formatLocalDate(d = new Date()) {
+    const dateObj = d instanceof Date ? d : new Date();
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+/**
+ * Parses a YYYY-MM-DD string into a Date object at local midnight (00:00:00 local).
+ * Avoids the ECMAScript ISO-8601 date-only string UTC midnight parsing behavior.
+ * @param {string} str - YYYY-MM-DD date string
+ * @returns {Date} Date instance at local midnight
+ */
+export function parseLocalDate(str) {
+    if (!str || typeof str !== 'string') return new Date();
+    const parts = str.split('-').map(Number);
+    if (parts.length < 3 || parts.some(Number.isNaN)) return new Date();
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+}
+
+/**
  * Возвращает startDate и endDate в формате YYYY-MM-DD для заданного количества дней.
  * @param {number} days - Количество дней (7, 30, 365). 0 для "за все время".
  * @returns {{startDate: string, endDate: string}}
  */
 export function getDateRange(days) {
     const now = new Date();
-    const endDate = now.toISOString().split('T')[0];
+    const endDate = formatLocalDate(now);
     let startDate = '1970-01-01'; // По умолчанию - с начала времен
     if (days > 0) {
-        const start = new Date();
-        start.setDate(now.getDate() - days);
-        startDate = start.toISOString().split('T')[0];
+        const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - days);
+        startDate = formatLocalDate(start);
     }
     return { startDate, endDate };
 }

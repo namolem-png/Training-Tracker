@@ -4,7 +4,7 @@ import { AppView } from './view/appView.js';
 import { injectPWA } from './pwa.js';
 import { STRINGS } from './constants/strings.js';
 import { StatisticsService } from './services/statisticsService.js';
-import { copyToClipboard } from './utils.js';
+import { copyToClipboard, formatLocalDate, parseLocalDate } from './utils.js';
 import { generateAiPrompt } from './services/aiPromptService.js';
 
 export class AppController {
@@ -118,8 +118,8 @@ export class AppController {
         if (this.isDraftMode) {
             const d = this.view.workoutView.dateInput.value;
             if (d) {
-                const dayIndex = new Date(d).getDay();
-                if (!isNaN(dayIndex)) {
+                const dayIndex = parseLocalDate(d).getDay();
+                if (!Number.isNaN(dayIndex) && STRINGS.COMMON.DAYS[dayIndex]) {
                     this.view.workoutView.dayInput.value = STRINGS.COMMON.DAYS[dayIndex];
                 }
             }
@@ -342,7 +342,7 @@ export class AppController {
         if (!selection) return;
 
         const data = await this.model.buildSelectiveExport(selection);
-        let dateSuffix = new Date().toISOString().split('T')[0];
+        let dateSuffix = formatLocalDate();
         if (selection.historyDateRange) {
             const { startDate, endDate } = selection.historyDateRange;
             if (startDate && endDate) {

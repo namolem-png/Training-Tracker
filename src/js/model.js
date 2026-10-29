@@ -3,6 +3,7 @@ import { WorkoutRepository } from './repositories/workoutRepository.js';
 import { ExerciseRepository } from './repositories/exerciseRepository.js';
 import { TemplateRepository } from './repositories/templateRepository.js';
 import { ImportExportService } from './services/importExportService.js';
+import { formatLocalDate, parseLocalDate } from './utils.js';
 
 export class AppModel {
     constructor(db) {
@@ -172,7 +173,7 @@ export class AppModel {
             }
         }
 
-        const date = customDate || today.toISOString().split('T')[0];
+        const date = customDate || formatLocalDate(today);
         const dayOfWeek = customDay || days[today.getDay()];
 
         const newWorkout = {
@@ -203,8 +204,7 @@ export class AppModel {
         if (!workout) return;
         if (date && date !== workout.date) {
             workout.date = date;
-            const [y, m, d] = date.split('-').map(Number);
-            const dayIdx = new Date(y, m - 1, d).getDay();
+            const dayIdx = parseLocalDate(date).getDay();
             if (!Number.isNaN(dayIdx) && STRINGS.COMMON.DAYS[dayIdx]) {
                 workout.dayOfWeek = STRINGS.COMMON.DAYS[dayIdx];
             }
