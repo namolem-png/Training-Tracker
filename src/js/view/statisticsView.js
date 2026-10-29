@@ -37,6 +37,11 @@ export class StatisticsView {
 
     async render(model, statsService) {
         if (!this.totalWorkoutsEl) return;
+        const tabEl = document.getElementById('tab-statistics');
+        if (tabEl && !tabEl.classList.contains('active')) {
+            return;
+        }
+
         if (model) this.model = model;
         if (statsService) this.statsService = statsService;
         const currentModel = model || this.model;
@@ -122,11 +127,6 @@ export class StatisticsView {
         if (!this.volumeSelect.value && firstExerciseId) {
             this.volumeSelect.value = firstExerciseId;
         }
-
-        // Добавляем обработчик изменения размера окна для респонсивности Canvas
-        window.removeEventListener('resize', this._onResize); // Удаляем предыдущий, если есть
-        this._onResize = debounce(() => this.render(this.model, this.statsService), 250); // Дебаунс на 250 мс
-        window.addEventListener('resize', this._onResize);
     }
 
     bindEvents(controller) {
@@ -237,6 +237,13 @@ export class StatisticsView {
         this.volumeSelect.addEventListener('change', () => {
             this.updateVolumeChart(controller.model, controller.statsService);
         });
+
+        window.addEventListener('resize', debounce(() => {
+            const tabEl = document.getElementById('tab-statistics');
+            if (tabEl && tabEl.classList.contains('active')) {
+                this.render(controller.model, controller.statsService);
+            }
+        }, 250));
     }
 
     async updateProgressChart(model, statsService) {

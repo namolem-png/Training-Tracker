@@ -69,6 +69,42 @@ export class AppView {
         await this.updateNavButtons(model);
     }
 
+    isTabActive(tabName) {
+        const content = document.getElementById(`tab-${tabName}`);
+        return Boolean(content && content.classList.contains('active'));
+    }
+
+    async renderActiveTab(model, statsService, tabName) {
+        let tab = tabName;
+        let m = model;
+        let s = statsService;
+        if (typeof model === 'string') {
+            tab = model;
+            m = statsService;
+            s = tabName;
+        }
+
+        switch (tab) {
+            case 'workout':
+                this.workoutView.render(m);
+                this.updateProgress(m);
+                await this.updateNavButtons(m);
+                break;
+            case 'history':
+                await this.historyView.render(m);
+                break;
+            case 'statistics':
+                await this.statisticsView.render(m, s);
+                break;
+            case 'settings':
+                await this.settingsView.render(m);
+                break;
+            default:
+                await this.renderAll(m, s);
+                break;
+        }
+    }
+
     updateProgress(model) {
         const workout = model.getActiveWorkout();
         let pct = 0;

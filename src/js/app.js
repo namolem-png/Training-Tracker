@@ -19,6 +19,7 @@ export class AppController {
 
     async init() {
         await this.model.init();
+        this.model.onDataChange = () => this.statsService.invalidateCache();
         this.view.init(this);
 
         window.addEventListener('hashchange', () => this.handleRouting());
@@ -43,7 +44,7 @@ export class AppController {
         if (hash === 'workout' && this.isDraftMode) {
             this.view.showWorkoutDraft(this.model);
         } else {
-            await this.view.renderAll(this.model, this.statsService);
+            await this.view.renderActiveTab(this.model, this.statsService, hash);
         }
     }
 
@@ -53,7 +54,9 @@ export class AppController {
         if (cardElement) {
             cardElement.classList.toggle('completed', isCompleted);
             this.view.updateProgress(this.model);
-            await this.view.statisticsView.render(this.model, this.statsService);
+            if (this.view.isTabActive('statistics')) {
+                await this.view.statisticsView.render(this.model, this.statsService);
+            }
         } else {
             await this.view.renderAll(this.model, this.statsService);
         }
@@ -88,7 +91,9 @@ export class AppController {
             await this.model.deleteExerciseFromWorkout(exIdx);
             this.view.workoutView.render(this.model);
             this.view.updateProgress(this.model);
-            await this.view.statisticsView.render(this.model, this.statsService);
+            if (this.view.isTabActive('statistics')) {
+                await this.view.statisticsView.render(this.model, this.statsService);
+            }
         }
     }
 
@@ -102,7 +107,9 @@ export class AppController {
             }
         }
         this.view.updateProgress(this.model);
-        await this.view.statisticsView.render(this.model, this.statsService);
+        if (this.view.isTabActive('statistics')) {
+            await this.view.statisticsView.render(this.model, this.statsService);
+        }
     }
 
     async handleToggleCategory(header) {
