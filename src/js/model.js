@@ -208,6 +208,22 @@ export class AppModel {
         }
     }
 
+    async updateWorkoutHeader(date, dayOfWeek) {
+        const workout = this.getActiveWorkout();
+        if (!workout) return;
+        if (date && date !== workout.date) {
+            workout.date = date;
+            const [y, m, d] = date.split('-').map(Number);
+            const dayIdx = new Date(y, m - 1, d).getDay();
+            if (!Number.isNaN(dayIdx) && STRINGS.COMMON.DAYS[dayIdx]) {
+                workout.dayOfWeek = STRINGS.COMMON.DAYS[dayIdx];
+            }
+        } else if (dayOfWeek !== undefined) {
+            workout.dayOfWeek = dayOfWeek;
+        }
+        await this.workoutRepo.save(workout);
+    }
+
     async toggleComplete(exIndex) {
         const workout = this.getActiveWorkout();
         workout.exercises[exIndex].completed = !workout.exercises[exIndex].completed;

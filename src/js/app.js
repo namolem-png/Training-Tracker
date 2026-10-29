@@ -1,4 +1,4 @@
-import { GymDatabase } from './db.js';
+import { GymDatabase, STORE } from './db.js';
 import { AppModel } from './model.js';
 import { AppView } from './view/appView.js';
 import { injectPWA } from './pwa.js';
@@ -152,6 +152,9 @@ export class AppController {
         const d = this.view.workoutView.dateInput.value;
         const day = this.view.workoutView.dayInput.value;
         await this.model.updateWorkoutHeader(d, day);
+        if (this.model.activeWorkout?.dayOfWeek) {
+            this.view.workoutView.dayInput.value = this.model.activeWorkout.dayOfWeek;
+        }
         this.view.historyView.render(this.model);
     }
 
@@ -279,6 +282,13 @@ export class AppController {
         if (!name.trim()) return alert(STRINGS.MESSAGES.ERROR_NO_NAME);
         await this.model.saveTemplate(id, name, exercises);
         this.view.settingsView.render(this.model);
+    }
+
+    async handleDeleteTemplate(id) {
+        if (confirm('Удалить шаблон?')) {
+            await this.model.deleteTemplate(id);
+            await this.view.settingsView.render(this.model);
+        }
     }
 
     async handleSaveNewExercise(isLibraryOnly) {
