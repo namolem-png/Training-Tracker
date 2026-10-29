@@ -12,3 +12,7 @@ gym_history_*.json
 
 # Build output
 dist/
+
+# Dependencies
+node_modules/
+

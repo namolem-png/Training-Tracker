@@ -3,10 +3,10 @@ name: Build and deploy to VPS
 on:
   # Запуск при каждом пуше в ветку main
   push:
-    branches: ["main"] #[cite: 1]
+    branches: ["main"]
 
   # Возможность ручного запуска из вкладки Actions
-  workflow_dispatch: #[cite: 1]
+  workflow_dispatch:
 
 # Отменяет предыдущие сборки при частых пушах
 concurrency:
@@ -15,18 +15,22 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest #[cite: 1]
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4 #[cite: 1]
+        uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4 #[cite: 1]
+        uses: actions/setup-node@v4
         with:
-          node-version: '20' #[cite: 1]
+          node-version: '26'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
 
       - name: Build site
-        run: node build.js #[cite: 1]
+        run: npm run build
 
       - name: Deploy static files to VPS via SCP
         uses: appleboy/scp-action@v0.1.7
@@ -34,6 +38,6 @@ jobs:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USERNAME }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          source: "./dist/*" #[cite: 1]
+          source: "./dist/*"
           target: "/var/www/training-tracker/frontend"
           strip_components: 1

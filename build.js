@@ -1,139 +1,67 @@
 const fs = require('fs');
 const path = require('path');
+const esbuild = require('esbuild');
 
 function build() {
     const srcDir = path.join(__dirname, 'src');
-
-    // Функция для простой минификации CSS
-    function minifyCss(cssContent) {
-        // Удаляем комментарии /* ... */
-        cssContent = cssContent.replace(/\/\*[\s\S]*?\*\//g, '');
-        // Заменяем переносы строк и табуляции на пробелы
-        cssContent = cssContent.replace(/[\n\r\t]+/g, ' ');
-        cssContent = cssContent.replace(/\s{2,}/g, ' ');
-        // Удаляем пробелы вокруг некоторых символов
-        cssContent = cssContent.replace(/\s*([:;,{}])\s*/g, '$1');
-        // Удаляем последний символ ';' перед '}'
-        cssContent = cssContent.replace(/;}/g, '}');
-        // Удаляем пробелы в начале и конце
-        cssContent = cssContent.trim();
-        return cssContent;
-    }
-
-    // Функция для простой минификации JavaScript
-    function minifyJs(jsContent) {
-        // Защищаем строковые литералы с обратными кавычками (`...`) от удаления переносов строк
-        const templateLiterals = [];
-        jsContent = jsContent.replace(/`[\s\S]*?`/g, (match) => {
-            templateLiterals.push(match);
-            return `__TL_${templateLiterals.length - 1}__`;
-        });
-
-        // Удаляем однострочные комментарии // ...
-        // Избегаем удаления // если они являются частью протокола (например, http://)
-        jsContent = jsContent.replace(/(^|[^\:])\/\/.*$/gm, '$1');
-        // Удаляем многострочные комментарии /* ... */
-        jsContent = jsContent.replace(/\/\*[\s\S]*?\*\//g, '');
-        // Заменяем переносы строк и табуляции на пробелы (критично для сохранения ASI)
-        jsContent = jsContent.replace(/[\n\r\t]+/g, ' ');
-        // Заменяем множественные пробелы на один
-        jsContent = jsContent.replace(/\s{2,}/g, ' ');
-        // Удаляем пробелы вокруг операторов и скобок (осторожно, чтобы не сломать ASI)
-        jsContent = jsContent.replace(/\s*([=+\-\*\/%&|^!~?:,;()\[\]<>])\s*/g, '$1');
-
-        // Восстанавливаем сохраненные шаблонные строки
-        jsContent = jsContent.replace(/__TL_(\d+)__/g, (_, idx) => templateLiterals[idx]);
-
-        // Удаляем пробелы в начале и конце
-        jsContent = jsContent.trim();
-        return jsContent;
-    }
-
-
-    let html = fs.readFileSync(path.join(srcDir, 'index.html'), 'utf8');
-
-    // Собираем CSS
-    const cssFiles = [
-        'css/base.css',
-        'css/components.css',
-        'css/stats.css',
-        'css/modals.css'
-    ];
-    let cssBundle = '';
-    cssFiles.forEach(file => {
-        const filePath = path.join(srcDir, file);
-        if (fs.existsSync(filePath)) {
-            cssBundle += fs.readFileSync(filePath, 'utf8') + '\n';
-        } else {
-            console.warn(`Предупреждение: CSS файл ${filePath} не найден.`);
-        }
-    });
-    if (!cssBundle.trim()) {
-        const cssPath = path.join(srcDir, 'style.css');
-        cssBundle = fs.existsSync(cssPath) ? fs.readFileSync(cssPath, 'utf8') : '';
-    }
-    // Заменяем тег link на встроенные стили
-    html = html.replace(/<link rel="stylesheet" href="style\.css">/, `<style>\n${minifyCss(cssBundle)}\n</style>`);
-
-    // Собираем JS
-    const jsFiles = [
-        'js/constants/strings.js',
-        'js/utils.js',
-        'js/services/statisticsService.js',
-        'js/services/aiPromptService.js',
-        'js/services/importExportService.js',
-        'js/db.js',
-        'js/repositories/workoutRepository.js',
-        'js/repositories/exerciseRepository.js',
-        'js/repositories/templateRepository.js',
-        'js/model.js',
-        'js/view/charts.js',
-        'js/view/workoutView.js',
-        'js/view/historyView.js',
-        'js/view/statisticsView.js',
-        'js/view/settingsView.js',
-        'js/view/exerciseModalView.js',
-        'js/view/importExportModalView.js',
-        'js/view/appView.js',
-        'js/pwa.js',
-        'js/app.js'
-    ];
-
-    let jsBundle = '';
-    jsFiles.forEach(file => {
-        const filePath = path.join(srcDir, file);
-        if (fs.existsSync(filePath)) {
-            let content = fs.readFileSync(filePath, 'utf8');
-            
-            // Очистка модульного синтаксиса для работы в одном файле
-            // Удаляем импорты (например, import { ... } from './...')
-            content = content.replace(/^import\s+[\s\S]*?from\s+['"].*?['"];?/gm, '');
-            // Удаляем экспорты (оставляем само определение класса/константы)
-            content = content.replace(/^export\s+/gm, '');
-            
-            jsBundle += `\n/* --- File: ${file} --- */\n${content}\n`;
-        } else {
-            console.warn(`Предупреждение: Файл ${filePath} не найден.`);
-        }
-    });
-
-    // Заменяем тег подключения модуля на собранный скрипт
-    html = html.replace(/<script type="module" src="js\/app\.js"><\/script>/, `<script>\n${minifyJs(jsBundle)}\n</script>`);
-
-    // Создаем папку dist и сохраняем результат
     const distDir = path.join(__dirname, 'dist');
-    if (!fs.existsSync(distDir)) fs.mkdirSync(distDir);
+
+    console.log('Building Training Tracker...');
+
+    // 1. Bundle and minify CSS (automatically resolves @import rules in style.css)
+    const cssResult = esbuild.buildSync({
+        entryPoints: [path.join(srcDir, 'style.css')],
+        bundle: true,
+        minify: true,
+        write: false,
+    });
+    const minifiedCss = cssResult.outputFiles[0].text;
+
+    // 2. Bundle and minify JS (automatically resolves all ES module imports starting from app.js)
+    const jsResult = esbuild.buildSync({
+        entryPoints: [path.join(srcDir, 'js', 'app.js')],
+        bundle: true,
+        minify: true,
+        format: 'iife',
+        target: 'es2022',
+        write: false,
+    });
+    const minifiedJs = jsResult.outputFiles[0].text;
+
+    // 3. Inline CSS and JS into index.html
+    let html = fs.readFileSync(path.join(srcDir, 'index.html'), 'utf8');
+    html = html.replace(/<link rel="stylesheet" href="style\.css">/, `<style>\n${minifiedCss}\n</style>`);
+    html = html.replace(/<script type="module" src="js\/app\.js"><\/script>/, `<script>\n${minifiedJs}\n</script>`);
+
+    // 4. Ensure dist directory exists and write dist/index.html
+    if (!fs.existsSync(distDir)) {
+        fs.mkdirSync(distDir, { recursive: true });
+    }
     fs.writeFileSync(path.join(distDir, 'index.html'), html);
 
-    // Копируем файлы PWA (manifest.json, sw.js, icon-192.png, icon-512.png, favicon.png, favicon.ico)
-    ['manifest.json', 'sw.js', 'icon-192.png', 'icon-512.png', 'favicon.png', 'favicon.ico'].forEach(file => {
+    // 5. Minify service worker and write to dist/sw.js
+    const swPath = path.join(srcDir, 'sw.js');
+    if (fs.existsSync(swPath)) {
+        const swResult = esbuild.buildSync({
+            entryPoints: [swPath],
+            bundle: true,
+            minify: true,
+            target: 'es2022',
+            write: false,
+        });
+        fs.writeFileSync(path.join(distDir, 'sw.js'), swResult.outputFiles[0].text);
+    }
+
+    // 6. Copy remaining PWA assets
+    const staticAssets = ['manifest.json', 'icon-192.png', 'icon-512.png', 'favicon.png', 'favicon.ico'];
+    staticAssets.forEach(file => {
         const srcFile = path.join(srcDir, file);
         if (fs.existsSync(srcFile)) {
             fs.copyFileSync(srcFile, path.join(distDir, file));
         }
     });
-    
-    console.log('Сборка завершена успешно! Файлы в папке dist/');
+
+    console.log('Build completed successfully! Assets output to dist/');
 }
 
 build();
