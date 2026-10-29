@@ -1,3 +1,5 @@
+import { escapeHtml } from '../utils.js';
+
 export class HistoryView {
     constructor() {
         this.container = document.getElementById('calendar-container');
@@ -90,11 +92,11 @@ export class HistoryView {
 
         card.innerHTML = `
             <div class="flex-1">
-                <p class="history-date">${new Date(w.date).toLocaleDateString('ru-RU')} (${w.dayOfWeek})</p>
+                <p class="history-date">${new Date(w.date).toLocaleDateString('ru-RU')} (${escapeHtml(w.dayOfWeek)})</p>
                 <p class="history-stats">Выполнено: ${completed} из ${w.exercises.length}</p>
             </div>
             <div class="d-flex align-center gap-15">
-                <button class="btn-delete-ex" data-action="delete-workout" data-id="${w.id}">🗑️</button>
+                <button class="btn-delete-ex" data-action="delete-workout" data-id="${escapeHtml(w.id)}">🗑️</button>
                 <div class="text-primary fs-20">➔</div>
             </div>
         `;

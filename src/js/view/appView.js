@@ -5,6 +5,7 @@ import { SettingsView } from './settingsView.js';
 import { ExerciseModalView } from './exerciseModalView.js';
 import { ImportExportModalView } from './importExportModalView.js';
 import { STRINGS } from '../constants/strings.js';
+import { escapeHtml } from '../utils.js';
 
 export class AppView {
     constructor() {
@@ -165,7 +166,7 @@ export class AppView {
 
         let optionsHtml = `<option value="empty">${STRINGS.WORKOUT.EMPTY_WORKOUT_OPTION}</option>`;
         if (model.templates && model.templates.length > 0) {
-            optionsHtml += model.templates.map(t => `<option value="${t.id}">${t.name}</option>`).join('');
+            optionsHtml += model.templates.map(t => `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)}</option>`).join('');
         }
         this.els.tplOptionsUi.innerHTML = `<select id="template-select-dropdown" style="width:100%; padding:10px;">${optionsHtml}</select>`;
         this.els.tplSelectionContainer.classList.remove('d-none');

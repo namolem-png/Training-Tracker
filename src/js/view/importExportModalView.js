@@ -1,4 +1,4 @@
-import { getDateRange, getPluralForm } from '../utils.js';
+import { getDateRange, getPluralForm, escapeHtml, debounce } from '../utils.js';
 import { STRINGS } from '../constants/strings.js';
 import { STORE } from '../db.js';
 
@@ -30,7 +30,7 @@ export class ImportExportModalView {
             btnImportTriggerFile: document.getElementById('btn-import-trigger-file'),
             btnImportPasteClipboard: document.getElementById('btn-import-paste-clipboard'),
             importJsonTextarea: document.getElementById('import-json-textarea'),
-            btnImportParse: document.getElementById('btn-import-parse'),
+
             importDetectedContainer: document.getElementById('import-detected-container'),
             btnImportSelectAll: document.getElementById('btn-import-select-all'),
             btnImportDeselectAll: document.getElementById('btn-import-deselect-all'),
@@ -111,8 +111,8 @@ export class ImportExportModalView {
         if (this.els.btnImportPasteClipboard) {
             this.els.btnImportPasteClipboard.addEventListener('click', () => controller.handleImportPasteClipboard());
         }
-        if (this.els.btnImportParse) {
-            this.els.btnImportParse.addEventListener('click', () => controller.handleParseImportText());
+        if (this.els.importJsonTextarea) {
+            this.els.importJsonTextarea.addEventListener('input', debounce(() => controller.handleAutoParseImportText(), 300));
         }
         if (this.els.btnImportSelectAll) {
             this.els.btnImportSelectAll.addEventListener('click', () => this.setAllImportCheckboxes(true));
@@ -149,8 +149,8 @@ export class ImportExportModalView {
                 const tplLabel = document.createElement('label');
                 tplLabel.className = 'checklist-item';
                 tplLabel.innerHTML = `
-                    <input type="checkbox" class="export-check-template" data-tpl-id="${tpl.id}" checked>
-                    <span>📋 Шаблон: <strong>${tpl.name}</strong> (${tpl.exercises.length} упр.)</span>
+                    <input type="checkbox" class="export-check-template" data-tpl-id="${escapeHtml(tpl.id)}" checked>
+                    <span>📋 Шаблон: <strong>${escapeHtml(tpl.name)}</strong> (${tpl.exercises.length} упр.)</span>
                 `;
                 frag.appendChild(tplLabel);
             });
@@ -354,7 +354,7 @@ export class ImportExportModalView {
                 const exCount = (tpl.exercises || []).length;
                 tplLabel.innerHTML = `
                     <input type="checkbox" class="import-check-template" data-idx="${idx}" checked>
-                    <span>📋 Шаблон: <strong>${tpl.name || 'Шаблон без названия'}</strong> (${exCount} упр.)</span>
+                    <span>📋 Шаблон: <strong>${escapeHtml(tpl.name || 'Шаблон без названия')}</strong> (${exCount} упр.)</span>
                 `;
                 frag.appendChild(tplLabel);
             });

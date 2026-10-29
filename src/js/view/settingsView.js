@@ -1,3 +1,5 @@
+import { escapeHtml } from '../utils.js';
+
 export class SettingsView {
     constructor() {
         this.templatesList = document.getElementById('templates-list');
@@ -37,7 +39,7 @@ export class SettingsView {
         model.categories.forEach(cat => {
             const item = document.createElement('div');
             item.className = 'category-item';
-            item.innerHTML = `<span>${cat.name}</span><button class="btn-delete-ex" data-action="delete-cat" data-id="${cat.id}">🗑️</button>`;
+            item.innerHTML = `<span>${escapeHtml(cat.name)}</span><button class="btn-delete-ex" data-action="delete-cat" data-id="${escapeHtml(cat.id)}">🗑️</button>`;
             frag.appendChild(item);
         });
         this.categoryList.appendChild(frag);
@@ -65,15 +67,15 @@ export class SettingsView {
             if (items?.length > 0) {
                 const header = document.createElement('div');
                 header.className = 'category-header mt-15';
-                header.innerHTML = `<div class="category-title fs-16">${cat.name}</div><button class="btn-add-to-cat" data-action="show-add-lib" data-cat="${cat.id}">+</button>`;
+                header.innerHTML = `<div class="category-title fs-16">${escapeHtml(cat.name)}</div><button class="btn-add-to-cat" data-action="show-add-lib" data-cat="${escapeHtml(cat.id)}">+</button>`;
                 fragment.appendChild(header);
 
                 items.sort((a, b) => a.name.localeCompare(b.name)).forEach(ex => {
                     const el = document.createElement('div');
                     el.className = 'category-item library-item';
                     el.innerHTML = `
-                        <div class="flex-1"><div class="fw-bold">${ex.name}</div><div class="fs-12 text-muted">${ex.target}</div></div>
-                        <div class="set-actions"><button class="btn-edit" data-action="edit-lib" data-id="${ex.id}">✎</button><button class="btn-delete-ex ml-10" data-action="delete-lib" data-id="${ex.id}">🗑️</button></div>
+                        <div class="flex-1"><div class="fw-bold">${escapeHtml(ex.name)}</div><div class="fs-12 text-muted">${escapeHtml(ex.target)}</div></div>
+                        <div class="set-actions"><button class="btn-edit" data-action="edit-lib" data-id="${escapeHtml(ex.id)}">✎</button><button class="btn-delete-ex ml-10" data-action="delete-lib" data-id="${escapeHtml(ex.id)}">🗑️</button></div>
                     `;
                     fragment.appendChild(el);
                 });
@@ -95,8 +97,8 @@ export class SettingsView {
                 const el = document.createElement('div');
                 el.className = 'category-item library-item';
                 el.innerHTML = `
-                    <div class="flex-1"><div class="fw-bold">${tpl.name}</div><div class="fs-12 text-muted">Упражнений: ${tpl.exercises.length}</div></div>
-                    <div class="set-actions"><button class="btn-edit" data-action="edit-template" data-id="${tpl.id}">✎</button><button class="btn-delete-ex ml-10" data-action="delete-template" data-id="${tpl.id}">🗑️</button></div>
+                    <div class="flex-1"><div class="fw-bold">${escapeHtml(tpl.name)}</div><div class="fs-12 text-muted">Упражнений: ${tpl.exercises.length}</div></div>
+                    <div class="set-actions"><button class="btn-edit" data-action="edit-template" data-id="${escapeHtml(tpl.id)}">✎</button><button class="btn-delete-ex ml-10" data-action="delete-template" data-id="${escapeHtml(tpl.id)}">🗑️</button></div>
                 `;
                 frag.appendChild(el);
             });
@@ -118,7 +120,7 @@ export class SettingsView {
             const ex = model.getLibraryExercise(exId);
             const item = document.createElement('div');
             item.className = 'set-item';
-            item.innerHTML = `<span>${ex.name} <small>(${model.getCategoryName(ex.categoryId)})</small></span><button class="btn-delete" data-action="remove-ex-template" data-idx="${idx}">✖</button>`;
+            item.innerHTML = `<span>${escapeHtml(ex.name)} <small>(${escapeHtml(model.getCategoryName(ex.categoryId))})</small></span><button class="btn-delete" data-action="remove-ex-template" data-idx="${idx}">✖</button>`;
             frag.appendChild(item);
         });
         this.els.tplExercisesList.appendChild(frag);
@@ -203,7 +205,7 @@ export class SettingsView {
         this.els.btnAddExToTpl.classList.add('d-none');
         this.els.stepInstruction.innerText = '1. Выберите категорию:';
         
-        this.els.stepOptions.innerHTML = model.categories.map(cat => `<button data-cat="${cat.id}" style="padding:5px 10px; cursor:pointer;">${cat.name}</button>`).join('');
+        this.els.stepOptions.innerHTML = model.categories.map(cat => `<button data-cat="${escapeHtml(cat.id)}" style="padding:5px 10px; cursor:pointer;">${escapeHtml(cat.name)}</button>`).join('');
     }
 
     selectCategoryForTemplate(model, catId) {
@@ -213,7 +215,7 @@ export class SettingsView {
         if (filtered.length === 0) {
             options.innerHTML = '<p style="font-size:12px;">В этой категории нет упражнений.</p>';
         } else {
-            options.innerHTML = filtered.map(ex => `<button data-ex="${ex.id}" style="padding:5px 10px; cursor:pointer;">${ex.name}</button>`).join('');
+            options.innerHTML = filtered.map(ex => `<button data-ex="${escapeHtml(ex.id)}" style="padding:5px 10px; cursor:pointer;">${escapeHtml(ex.name)}</button>`).join('');
         }
     }
 

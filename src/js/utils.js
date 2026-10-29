@@ -43,6 +43,20 @@ export function getPluralForm(num, forms) {
 }
 
 /**
+ * Escapes HTML characters in a string to prevent XSS.
+ * @param {*} str - The input string or value to escape.
+ * @returns {string} Safe HTML-escaped string.
+ */
+export function escapeHtml(str) {
+    return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+/**
  * Copies text to the clipboard with fallback for unsupported environments.
  * @param {string} text - The text to copy.
  * @returns {Promise<boolean>}

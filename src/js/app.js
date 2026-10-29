@@ -428,10 +428,18 @@ export class AppController {
         event.target.value = '';
     }
 
-    handleParseImportText() {
+    handleAutoParseImportText() {
+        this.handleParseImportText(false);
+    }
+
+    handleParseImportText(showAlert = true) {
         const text = this.view.els.importJsonTextarea.value;
         if (!text || !text.trim()) {
-            alert(STRINGS.MESSAGES.ERROR_INVALID_JSON);
+            this.currentParsedImportPayload = null;
+            if (this.view.els.importDetectedContainer) {
+                this.view.els.importDetectedContainer.classList.add('d-none');
+            }
+            if (showAlert) alert(STRINGS.MESSAGES.ERROR_INVALID_JSON);
             return;
         }
 
@@ -441,7 +449,11 @@ export class AppController {
             this.view.renderDetectedImport(payload);
         } catch (err) {
             console.error('Ошибка распознавания данных:', err);
-            alert(STRINGS.MESSAGES.ERROR_INVALID_JSON);
+            this.currentParsedImportPayload = null;
+            if (this.view.els.importDetectedContainer) {
+                this.view.els.importDetectedContainer.classList.add('d-none');
+            }
+            if (showAlert) alert(STRINGS.MESSAGES.ERROR_INVALID_JSON);
         }
     }
 

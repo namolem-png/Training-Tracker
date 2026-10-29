@@ -1,4 +1,5 @@
 import { STRINGS } from '../constants/strings.js';
+import { escapeHtml } from '../utils.js';
 
 export class WorkoutView {
     constructor() {
@@ -73,9 +74,9 @@ export class WorkoutView {
         header.innerHTML = `
             <div class="category-title-wrapper">
                 <span class="category-arrow">▼</span>
-                <div class="category-title">${catName}</div>
+                <div class="category-title">${escapeHtml(catName)}</div>
             </div>
-            <button class="btn-add-to-cat" data-action="show-add-ex" data-cat="${catId}" title="Добавить">+</button>
+            <button class="btn-add-to-cat" data-action="show-add-ex" data-cat="${escapeHtml(catId)}" title="Добавить">+</button>
         `;
 
         const content = document.createElement('div');
@@ -100,8 +101,8 @@ export class WorkoutView {
                 <div class="ex-header-left">
                     <input type="checkbox" ${ex.completed ? 'checked' : ''} data-action="toggle-complete" data-ex="${index}">
                     <div class="ex-info">
-                        <p class="ex-name">${libEx.name}</p>
-                        <p class="ex-target">Цель: ${libEx.target}</p>
+                        <p class="ex-name">${escapeHtml(libEx.name)}</p>
+                        <p class="ex-target">Цель: ${escapeHtml(libEx.target)}</p>
                     </div>
                 </div>
                 <button class="btn-delete-ex" data-action="delete-ex" data-ex="${index}" title="Удалить">🗑️</button>
@@ -138,7 +139,7 @@ export class WorkoutView {
             const setItem = document.createElement('div');
             setItem.className = 'set-item';
             setItem.innerHTML = `
-                <span>${setIdx + 1}. <b>${set.weight} кг</b> × <b>${set.reps}</b></span>
+                <span>${setIdx + 1}. <b>${escapeHtml(set.weight)} кг</b> × <b>${escapeHtml(set.reps)}</b></span>
                 <div class="set-actions">
                     <button class="btn-edit" data-action="edit-set" data-ex="${exIndex}" data-set="${setIdx}">✎</button>
                     <button class="btn-delete" data-action="delete-set" data-ex="${exIndex}" data-set="${setIdx}">✖</button>

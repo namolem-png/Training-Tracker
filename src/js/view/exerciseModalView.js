@@ -1,3 +1,5 @@
+import { escapeHtml } from '../utils.js';
+
 export class ExerciseModalView {
     constructor() {
         this.addingToLibraryOnly = false;
@@ -157,7 +159,7 @@ export class ExerciseModalView {
             if (this.els.newExTarget) this.els.newExTarget.value = '';
         } else {
             libSel.innerHTML = '<option value="" disabled selected>-- Выберите упражнение --</option>' + 
-                filtered.map(e => `<option value="${e.id}">${e.name}</option>`).join('') + 
+                filtered.map(e => `<option value="${escapeHtml(e.id)}">${escapeHtml(e.name)}</option>`).join('') + 
                 '<option value="new">+ Новое упражнение (вручную)</option>';
             if (this.els.customExFields) this.els.customExFields.classList.add('d-none');
             if (this.els.selectedExTargetInfo) this.els.selectedExTargetInfo.classList.add('d-none');
@@ -172,7 +174,7 @@ export class ExerciseModalView {
 
         if (isLibraryOnly) {
             catSel.innerHTML = '<option value="" disabled selected>-- Выберите категорию --</option>' +
-                categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                categories.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('');
             if (catId) catSel.value = catId;
             if (this.els.customExFields) this.els.customExFields.classList.remove('d-none');
             if (this.els.newExName) this.els.newExName.value = '';
@@ -182,7 +184,7 @@ export class ExerciseModalView {
         }
 
         catSel.innerHTML = '<option value="" disabled selected>-- Выберите категорию --</option>' +
-            categories.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+            categories.map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`).join('');
 
         if (catId) {
             catSel.value = catId;

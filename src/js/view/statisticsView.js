@@ -1,5 +1,5 @@
 import { STRINGS } from '../constants/strings.js';
-import { debounce } from '../utils.js';
+import { debounce, escapeHtml } from '../utils.js';
 import { NativeLineChart, NativePieChart, CHART_COLORS } from './charts.js';
 
 export class StatisticsView {
@@ -111,9 +111,9 @@ export class StatisticsView {
         
         let optionsHtml = '<option value="">-- Выберите упражнение --</option>';
         Object.values(grouped).forEach(group => {
-            optionsHtml += `<optgroup label="${group.categoryName}">`;
+            optionsHtml += `<optgroup label="${escapeHtml(group.categoryName)}">`;
             group.exercises.forEach(ex => {
-                optionsHtml += `<option value="${ex.id}">${ex.name}</option>`;
+                optionsHtml += `<option value="${escapeHtml(ex.id)}">${escapeHtml(ex.name)}</option>`;
                 if (!firstExerciseId) firstExerciseId = ex.id; // Запоминаем ID первого упражнения
             });
             optionsHtml += `</optgroup>`;
@@ -297,9 +297,9 @@ export class StatisticsView {
             const legendItemsHtml = categories.map((cat, index) => {
                 const isActive = this.activeVolumeCategoryFilter === cat.id ? 'active' : '';
                 return `
-                <div class="legend-item ${isActive}" data-category-id="${cat.id}">
+                <div class="legend-item ${isActive}" data-category-id="${escapeHtml(cat.id)}">
                     <span class="legend-dot" style="background-color:${StatisticsView.CATEGORY_COLORS[index % StatisticsView.CATEGORY_COLORS.length]};"></span>
-                    <span>${cat.name}</span>
+                    <span>${escapeHtml(cat.name)}</span>
                 </div>
                 `;
             }).join('');
@@ -335,8 +335,8 @@ export class StatisticsView {
             return `
                 <div class="weekly-item">
                     <div class="weekly-item-info">
-                        <span class="weekly-item-name">${name}</span>
-                        <span class="weekly-item-count">${sets} <span class="weekly-item-target">/ 20</span></span>
+                        <span class="weekly-item-name">${escapeHtml(name)}</span>
+                        <span class="weekly-item-count">${escapeHtml(sets)} <span class="weekly-item-target">/ 20</span></span>
                     </div>
                     <div class="progress-container">
                         <div class="progress-fill" style="width: ${width}%; background-color: ${color};"></div>
