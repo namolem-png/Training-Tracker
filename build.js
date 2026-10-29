@@ -30,8 +30,8 @@ function build() {
 
     // 3. Inline CSS and JS into index.html
     let html = fs.readFileSync(path.join(srcDir, 'index.html'), 'utf8');
-    html = html.replace(/<link rel="stylesheet" href="style\.css">/, `<style>\n${minifiedCss}\n</style>`);
-    html = html.replace(/<script type="module" src="js\/app\.js"><\/script>/, `<script>\n${minifiedJs}\n</script>`);
+    html = html.replace(/<link rel="stylesheet" href="style\.css">/, () => '<style>\n' + minifiedCss + '\n</style>');
+    html = html.replace(/<script type="module" src="js\/app\.js"><\/script>/, () => '<script>\n' + minifiedJs + '\n</script>');
 
     // 4. Ensure dist directory exists and write dist/index.html
     if (!fs.existsSync(distDir)) {
