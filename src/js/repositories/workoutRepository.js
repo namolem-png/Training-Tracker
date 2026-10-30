@@ -45,21 +45,35 @@ export class WorkoutRepository {
     async getInRange(startDate, endDate, direction = 'next') {
         if (startDate && endDate) {
             if (startDate > endDate) return [];
-            return await this.db.getInRange(
-                STORE.WORKOUTS,
-                'date',
-                startDate,
-                endDate,
-                direction,
-            );
+            try {
+                const upper =
+                    endDate.length === 10 ? `${endDate}\uffff` : endDate;
+                return await this.db.getInRange(
+                    STORE.WORKOUTS,
+                    'date',
+                    startDate,
+                    upper,
+                    direction,
+                );
+            } catch (e) {
+                console.warn(
+                    'IDB getInRange failed, falling back to getAll:',
+                    e,
+                );
+            }
         }
         const all = await this.getAll();
-        return all.filter((w) => {
-            const d = (w.date || '').split('T')[0];
-            if (startDate && d < startDate) return false;
-            if (endDate && d > endDate) return false;
-            return true;
-        });
+        return all
+            .filter((w) => {
+                const d = (w.date || '').split('T')[0];
+                if (startDate && d < startDate) return false;
+                if (endDate && d > endDate) return false;
+                return true;
+            })
+            .sort((a, b) => {
+                const comp = (a.date || '').localeCompare(b.date || '');
+                return direction === 'prev' ? -comp : comp;
+            });
     }
 
     async getAdjacentId(id, direction) {

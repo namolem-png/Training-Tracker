@@ -79,18 +79,21 @@ export class NativeLineChart {
         const plotWidth = width - padding.left - padding.right;
         const plotHeight = height - padding.top - padding.bottom;
 
+        const segmentWidth = plotWidth / (data.length || 1);
         const getX = (i) => {
-            if (type === 'line' || data.length <= 1) {
-                return padding.left + (i * plotWidth) / (data.length - 1 || 1);
+            if (type === 'line') {
+                if (data.length <= 1) {
+                    return padding.left + plotWidth / 2;
+                }
+                return padding.left + (i * plotWidth) / (data.length - 1);
             }
-            const segmentWidth = plotWidth / data.length;
             return padding.left + i * segmentWidth + segmentWidth / 2;
         };
         const getY = (val) =>
             height -
             padding.bottom -
             ((val - minY) * plotHeight) / (maxY - minY);
-        const barWidth = (plotWidth / (data.length || 1)) * 0.7;
+        const barWidth = Math.min(45, segmentWidth * 0.7);
 
         // 2. Сетка и Оси
         ctx.strokeStyle = '#e0e0e0';
@@ -135,6 +138,7 @@ export class NativeLineChart {
                 ctx.arc(x, y, 4, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.fillStyle = '#333';
+                ctx.textAlign = 'center';
                 ctx.fillText(Math.round(point.value), x, y - 10);
             });
         } else if (type === 'bar') {
@@ -157,7 +161,8 @@ export class NativeLineChart {
             data.forEach((point, i) => {
                 let currentYOffset = 0;
                 const xCenter = getX(i);
-                Object.entries(point.categories).forEach(([cat, val], idx) => {
+                const categories = point.categories || {};
+                Object.entries(categories).forEach(([cat, val], idx) => {
                     if (val === 0) return;
                     const h = (val / (maxY - minY)) * plotHeight;
                     const y = height - padding.bottom - h - currentYOffset;
@@ -166,7 +171,7 @@ export class NativeLineChart {
                     currentYOffset += h;
                 });
                 // Выводим общее значение для всего столбца
-                const totalBarValue = Object.values(point.categories).reduce(
+                const totalBarValue = Object.values(categories).reduce(
                     (a, b) => a + b,
                     0,
                 );
@@ -186,11 +191,10 @@ export class NativeLineChart {
             if (i === 0 || i === data.length - 1 || data.length < 5) {
                 ctx.fillStyle = '#888';
                 ctx.textAlign = 'center';
-                const shortDate = point.date
-                    .split('-')
-                    .slice(1)
-                    .reverse()
-                    .join('.');
+                const cleanDate = (point.date || '').split('T')[0];
+                const parts = cleanDate.split('-');
+                const shortDate =
+                    parts.length >= 3 ? `${parts[2]}.${parts[1]}` : cleanDate;
                 ctx.fillText(shortDate, x, height - padding.bottom + 15);
             }
         });

@@ -89,7 +89,7 @@ export class StatisticsService {
                 );
 
                 sortedWorkouts.forEach((workout) => {
-                    const instance = workout.exercises.find(
+                    const instance = (workout.exercises || []).find(
                         (ex) => ex.exerciseId === exerciseId,
                     );
                     if (
@@ -128,7 +128,8 @@ export class StatisticsService {
                         );
                     }
 
-                    results.push({ date: workout.date, value: dayValue });
+                    const date = (workout.date || '').split('T')[0];
+                    results.push({ date, value: dayValue });
                 });
 
                 return results;
@@ -150,14 +151,15 @@ export class StatisticsService {
             return rangeWorkouts
                 .map((w) => {
                     let total = 0;
-                    w.exercises.forEach((ex) => {
-                        ex.sets.forEach((s) => {
+                    (w.exercises || []).forEach((ex) => {
+                        (ex.sets || []).forEach((s) => {
                             total +=
                                 (Number.parseFloat(s.weight) || 0) *
                                 (Number.parseInt(s.reps, 10) || 0);
                         });
                     });
-                    return { date: w.date, value: total };
+                    const date = (w.date || '').split('T')[0];
+                    return { date, value: total };
                 })
                 .filter((data) => data !== null)
                 .sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -182,22 +184,24 @@ export class StatisticsService {
                         categories[c.name] = 0;
                     });
 
-                    w.exercises.forEach((ex) => {
+                    (w.exercises || []).forEach((ex) => {
                         const libEx = this.model.getLibraryExercise(
                             ex.exerciseId,
                         );
+                        if (!libEx) return;
                         const catName = this.model.getCategoryName(
                             libEx.categoryId,
                         );
-                        if (Object.hasOwn(categories, catName)) {
-                            ex.sets.forEach((s) => {
+                        if (catName && Object.hasOwn(categories, catName)) {
+                            (ex.sets || []).forEach((s) => {
                                 categories[catName] +=
                                     (Number.parseFloat(s.weight) || 0) *
                                     (Number.parseInt(s.reps, 10) || 0);
                             });
                         }
                     });
-                    return { date: w.date, categories };
+                    const date = (w.date || '').split('T')[0];
+                    return { date, categories };
                 })
                 .filter((data) => data !== null)
                 .sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -213,7 +217,7 @@ export class StatisticsService {
             const usedExerciseIds = new Set();
             const allWorkouts = await this.model.workoutRepo.getAll();
             allWorkouts.forEach((w) => {
-                w.exercises.forEach((e) => {
+                (w.exercises || []).forEach((e) => {
                     if (
                         e.sets?.some(
                             (s) => (Number.parseInt(s.reps, 10) || 0) > 0,
@@ -252,13 +256,14 @@ export class StatisticsService {
             });
 
             rangeWorkouts.forEach((w) => {
-                w.exercises.forEach((ex) => {
+                (w.exercises || []).forEach((ex) => {
                     const libEx = this.model.getLibraryExercise(ex.exerciseId);
+                    if (!libEx) return;
                     const catName = this.model.getCategoryName(
                         libEx.categoryId,
                     );
-                    if (Object.hasOwn(stats, catName)) {
-                        const validSets = ex.sets.filter(
+                    if (catName && Object.hasOwn(stats, catName)) {
+                        const validSets = (ex.sets || []).filter(
                             (s) => (Number.parseInt(s.reps, 10) || 0) > 0,
                         ).length;
                         stats[catName] += validSets;

@@ -233,11 +233,19 @@ export class StatisticsView {
                 );
                 toggleActiveBtn(btn);
                 if (this.volumeChartTitle) {
-                    this.volumeChartTitle.textContent =
-                        STRINGS.STATISTICS.CHART_TITLES.VOLUME.replace(
-                            '{period}',
-                            btn.textContent.toLowerCase(),
-                        );
+                    if (
+                        this.currentVolumeInterval === 7 &&
+                        STRINGS.STATISTICS.CHART_TITLES.WEEKLY_VOLUME
+                    ) {
+                        this.volumeChartTitle.textContent =
+                            STRINGS.STATISTICS.CHART_TITLES.WEEKLY_VOLUME;
+                    } else {
+                        this.volumeChartTitle.textContent =
+                            STRINGS.STATISTICS.CHART_TITLES.VOLUME.replace(
+                                '{period}',
+                                btn.textContent.toLowerCase(),
+                            );
+                    }
                 }
                 this.updateVolumeChart(
                     controller.model,
@@ -441,7 +449,13 @@ export class StatisticsView {
             statsService || this.statsService
         ).getCategorySetsData(7);
 
-        this.weeklyWidgetContainer.innerHTML = Object.entries(data)
+        const entries = Object.entries(data || {});
+        if (entries.length === 0) {
+            this.weeklyWidgetContainer.innerHTML = `<div class="text-center text-muted fs-12 p-10">${escapeHtml(STRINGS.COMMON.NO_DATA_SIMPLE)}</div>`;
+            return;
+        }
+
+        this.weeklyWidgetContainer.innerHTML = entries
             .map(([name, sets]) => {
                 // Определение цвета прогресс-бара
                 let color = '#f1c40f'; // Желтый (<10)
